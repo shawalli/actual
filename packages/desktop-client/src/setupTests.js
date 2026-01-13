@@ -27,3 +27,7 @@ process.on('unhandledRejection', reason => {
 global.afterEach(() => {
   global.__resetWorld();
 });
+
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}

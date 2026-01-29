@@ -154,7 +154,7 @@ export function generateTransaction(
         amount: trans.amount - splitAmount,
         account: parent.account,
         date: parent.date,
-        flag: parent.flag,
+        flag: null,
         is_child: true,
       },
       {
@@ -162,7 +162,7 @@ export function generateTransaction(
         amount: splitAmount,
         account: parent.account,
         date: parent.date,
-        flag: parent.flag,
+        flag: null,
         is_child: true,
       },
     );

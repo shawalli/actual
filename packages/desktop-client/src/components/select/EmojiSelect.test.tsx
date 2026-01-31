@@ -25,7 +25,7 @@ vi.mock('@emoji-mart/data', () => ({
       },
       large_blue_circle: {
         id: 'large_blue_circle',
-        name:'Blue Circle',
+        name: 'Blue Circle',
         keywords: ['blue', 'circle'],
         skins: [{ native: '🔵' }],
       },

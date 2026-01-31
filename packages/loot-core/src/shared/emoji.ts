@@ -36,7 +36,11 @@ function buildEmojiCache(): Map<string, string> {
 
 /**
  * Converts an emoji shortcode (e.g., ":large_blue_circle:") to its native emoji character.
+ * Only matches exact shortcode IDs - no partial matching.
  * Returns the original string if the shortcode is not found.
+ *
+ * @param shortcode - The emoji shortcode (with or without colons)
+ * @returns The native emoji character, or the original string if not found
  */
 export function shortcodeToNative(shortcode: string | null): string {
   if (!shortcode) {
@@ -44,8 +48,13 @@ export function shortcodeToNative(shortcode: string | null): string {
   }
 
   const id = shortcode.replace(/^:+|:+$/g, '');
+  if (!id) {
+    return shortcode;
+  }
+
   const cache = buildEmojiCache();
-  return cache.get(id) || shortcode; // Fallback to shortcode if not found
+  const native = cache.get(id);
+  return native || shortcode; // Fallback to shortcode if not found
 }
 
 /**
@@ -76,6 +85,7 @@ export function nativeToShortcode(emoji: string | null): string {
  * Normalizes a flag value to shortcode format (e.g., ":large_blue_circle:").
  * If the input is already a shortcode, ensures it has colons.
  * If the input is a native emoji, converts it back to shortcode.
+ * Trusts that internal systems (emoji picker, exporter) use valid shortcodes.
  *
  * @param flag - The flag value (shortcode or native emoji)
  * @returns The flag in shortcode format with colons, or null if empty
@@ -88,7 +98,7 @@ export function normalizeFlagToShortcode(
   }
 
   if (flag.includes(':')) {
-    const id = flag.replace(/^:/, '').replace(/:$/, '');
+    const id = flag.replace(/^:+|:+$/g, '');
     return id ? `:${id}:` : null;
   }
 
@@ -103,4 +113,31 @@ export function normalizeFlagToShortcode(
   }
 
   return flag;
+}
+
+/**
+ * Validates that a shortcode exists in the emoji data and returns it normalized.
+ * Used during CSV import to ensure only exact shortcode matches are accepted.
+ *
+ * @param shortcode - The shortcode to validate (with or without colons)
+ * @returns The normalized shortcode with colons if valid, null otherwise
+ */
+export function validateNormalizeShortcode(
+  shortcode: string | null | undefined,
+): string | null {
+  if (!shortcode) {
+    return null;
+  }
+
+  const id = shortcode.replace(/^:+|:+$/g, '');
+  if (!id) {
+    return null;
+  }
+
+  const cache = buildEmojiCache();
+  if (cache.has(id)) {
+    return `:${id}:`;
+  }
+
+  return null;
 }

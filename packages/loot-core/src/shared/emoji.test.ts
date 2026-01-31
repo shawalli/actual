@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { shortcodeToNative } from './emoji';
+import { shortcodeToNative, validateNormalizeShortcode } from './emoji';
 
 vi.mock('@emoji-mart/data', () => ({
   default: {
@@ -76,6 +76,42 @@ describe('emojiUtils', () => {
       expect(shortcodeToNative('::thumbs_up::')).toBe('👍');
       expect(shortcodeToNative(':::thumbs_up:::')).toBe('👍');
       expect(shortcodeToNative(':thumbs:up:')).toBe(':thumbs:up:');
+    });
+  });
+
+  describe('validateNormalizeShortcode', () => {
+    it('validates and normalizes valid shortcode with colons', () => {
+      expect(validateNormalizeShortcode(':grinning:')).toBe(':grinning:');
+      expect(validateNormalizeShortcode(':large_blue_circle:')).toBe(
+        ':large_blue_circle:',
+      );
+      expect(validateNormalizeShortcode(':thumbs_up:')).toBe(':thumbs_up:');
+    });
+
+    it('validates and normalizes valid shortcode without colons', () => {
+      expect(validateNormalizeShortcode('grinning')).toBe(':grinning:');
+      expect(validateNormalizeShortcode('large_blue_circle')).toBe(
+        ':large_blue_circle:',
+      );
+    });
+
+    it('returns null for invalid shortcodes', () => {
+      expect(validateNormalizeShortcode(':unknown_emoji:')).toBe(null);
+      expect(validateNormalizeShortcode('unknown_emoji')).toBe(null);
+    });
+
+    it('returns null for empty or null input', () => {
+      expect(validateNormalizeShortcode(null)).toBe(null);
+      expect(validateNormalizeShortcode('')).toBe(null);
+      expect(validateNormalizeShortcode('::')).toBe(null);
+    });
+
+    it('only matches exact shortcode IDs, not partial matches', () => {
+      expect(validateNormalizeShortcode(':large_blue_circle:')).toBe(
+        ':large_blue_circle:',
+      );
+      expect(validateNormalizeShortcode(':blue_circle:')).toBe(null);
+      expect(validateNormalizeShortcode(':blue:')).toBe(null);
     });
   });
 });

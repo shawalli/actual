@@ -15,10 +15,10 @@ vi.mock('@emoji-mart/data', () => ({
         name: 'Hundred Points',
         skins: [{ native: '💯' }],
       },
-      red_circle: {
-        id: 'red_circle',
-        name: 'Red Circle',
-        skins: [{ native: '🔴' }],
+      large_blue_circle: {
+        id: 'large_blue_circle',
+        name: 'Blue Circle',
+        skins: [{ native: '🔵' }],
       },
       thumbs_up: {
         id: 'thumbs_up',
@@ -38,13 +38,13 @@ describe('emojiUtils', () => {
     it('converts shortcode with colons to native emoji', () => {
       expect(shortcodeToNative(':grinning:')).toBe('😀');
       expect(shortcodeToNative(':100:')).toBe('💯');
-      expect(shortcodeToNative(':red_circle:')).toBe('🔴');
+      expect(shortcodeToNative(':large_blue_circle:')).toBe('🔵');
     });
 
     it('converts shortcode without colons to native emoji', () => {
       expect(shortcodeToNative('grinning')).toBe('😀');
       expect(shortcodeToNative('100')).toBe('💯');
-      expect(shortcodeToNative('red_circle')).toBe('🔴');
+      expect(shortcodeToNative('large_blue_circle')).toBe('🔵');
     });
 
     it('returns empty string for null input', () => {

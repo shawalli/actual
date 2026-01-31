@@ -23,11 +23,11 @@ vi.mock('@emoji-mart/data', () => ({
         keywords: ['100', 'hundred', 'points', 'score'],
         skins: [{ native: '💯' }],
       },
-      red_circle: {
-        id: 'red_circle',
-        name: 'Red Circle',
-        keywords: ['red', 'circle', 'round'],
-        skins: [{ native: '🔴' }],
+      large_blue_circle: {
+        id: 'large_blue_circle',
+        name:'Blue Circle',
+        keywords: ['blue', 'circle'],
+        skins: [{ native: '🔵' }],
       },
       thumbs_up: {
         id: 'thumbs_up',
@@ -296,15 +296,15 @@ describe('EmojiSelect', () => {
 
     expect(screen.getByText('😀')).toBeInTheDocument();
     expect(screen.getByText('💯')).toBeInTheDocument();
-    expect(screen.getByText('🔴')).toBeInTheDocument();
+    expect(screen.getByText('🔵')).toBeInTheDocument();
     expect(screen.getByText('👍')).toBeInTheDocument();
 
     const input = screen.getByRole('textbox');
     await userEvent.click(input);
-    await userEvent.keyboard('red_circle');
+    await userEvent.keyboard('large_blue_circle');
 
     await waitFor(() => {
-      expect(screen.getByText('🔴')).toBeInTheDocument();
+      expect(screen.getByText('🔵')).toBeInTheDocument();
       expect(screen.queryByText('💯')).not.toBeInTheDocument();
       expect(screen.queryByText('😀')).not.toBeInTheDocument();
       expect(screen.queryByText('👍')).not.toBeInTheDocument();
@@ -317,7 +317,7 @@ describe('EmojiSelect', () => {
       () => {
         expect(screen.getByText('😀')).toBeInTheDocument();
         expect(screen.getByText('💯')).toBeInTheDocument();
-        expect(screen.getByText('🔴')).toBeInTheDocument();
+        expect(screen.getByText('🔵')).toBeInTheDocument();
         expect(screen.getByText('👍')).toBeInTheDocument();
       },
       { timeout: 2000 },
@@ -341,7 +341,7 @@ describe('EmojiSelect', () => {
     await userEvent.keyboard('thumbs up');
     await waitFor(() => {
       expect(screen.getByText('👍')).toBeInTheDocument();
-      expect(screen.queryByText('🔴')).not.toBeInTheDocument();
+      expect(screen.queryByText('🔵')).not.toBeInTheDocument();
     });
 
     await userEvent.keyboard('{Control>}a{/Control}');
@@ -349,7 +349,7 @@ describe('EmojiSelect', () => {
     await userEvent.keyboard('thumbsup');
     await waitFor(() => {
       expect(screen.getByText('👍')).toBeInTheDocument();
-      expect(screen.queryByText('🔴')).not.toBeInTheDocument();
+      expect(screen.queryByText('🔵')).not.toBeInTheDocument();
     });
 
     await userEvent.keyboard('{Control>}a{/Control}');
@@ -357,7 +357,7 @@ describe('EmojiSelect', () => {
     await userEvent.keyboard('thumbs_up');
     await waitFor(() => {
       expect(screen.getByText('👍')).toBeInTheDocument();
-      expect(screen.queryByText('🔴')).not.toBeInTheDocument();
+      expect(screen.queryByText('🔵')).not.toBeInTheDocument();
     });
 
     await userEvent.keyboard('{Control>}a{/Control}');
@@ -365,7 +365,7 @@ describe('EmojiSelect', () => {
     await userEvent.keyboard(':thumbs_up:');
     await waitFor(() => {
       expect(screen.getByText('👍')).toBeInTheDocument();
-      expect(screen.queryByText('🔴')).not.toBeInTheDocument();
+      expect(screen.queryByText('🔵')).not.toBeInTheDocument();
     });
 
     await userEvent.keyboard('{Control>}a{/Control}');
@@ -373,7 +373,7 @@ describe('EmojiSelect', () => {
     await userEvent.keyboard(':thumbs:up:');
     await waitFor(() => {
       expect(screen.getByText('👍')).toBeInTheDocument();
-      expect(screen.queryByText('🔴')).not.toBeInTheDocument();
+      expect(screen.queryByText('🔵')).not.toBeInTheDocument();
     });
 
     await userEvent.keyboard('{Control>}a{/Control}');
@@ -381,7 +381,7 @@ describe('EmojiSelect', () => {
     await userEvent.keyboard('::thumbs_up::');
     await waitFor(() => {
       expect(screen.getByText('👍')).toBeInTheDocument();
-      expect(screen.queryByText('🔴')).not.toBeInTheDocument();
+      expect(screen.queryByText('🔵')).not.toBeInTheDocument();
     });
   });
 

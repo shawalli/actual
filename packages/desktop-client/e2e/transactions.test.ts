@@ -252,7 +252,7 @@ test.describe('Transactions', () => {
       notes: 'Notes field',
       category: 'Food',
       debit: '12.34',
-      flag: ':red_circle:',
+      flag: ':large_blue_circle:',
     });
     const transaction = accountPage.getNthTransaction(0);
     await expect(transaction.payee).toHaveText('Home Depot');
@@ -260,7 +260,7 @@ test.describe('Transactions', () => {
     await expect(transaction.category).toHaveText('Food');
     await expect(transaction.debit).toHaveText('12.34');
     await expect(transaction.credit).toHaveText('');
-    await expect(transaction.flag).toContainText('🔴');
+    await expect(transaction.flag).toContainText('🔵');
     await expect(transaction.flag.locator('svg')).toHaveCount(0);
     await expect(page).toMatchThemeScreenshots();
   });
@@ -271,7 +271,7 @@ test.describe('Transactions', () => {
       notes: 'Test notes',
       category: 'Food',
       debit: '50.00',
-      flag: ':red_circle:',
+      flag: ':large_blue_circle:',
     });
 
     await accountPage.accountMenuButton.click();
@@ -288,7 +288,7 @@ test.describe('Transactions', () => {
     try {
       const csvContent = await fs.readFile(path, 'utf-8');
       expect(csvContent).toContain('Flag');
-      expect(csvContent).toContain(':red_circle:');
+      expect(csvContent).toContain(':large_blue_circle:');
     } finally {
       await fs.unlink(path);
     }

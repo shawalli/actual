@@ -259,6 +259,10 @@ Always run `yarn typecheck` before committing.
 - Generate i18n files: `yarn generate:i18n`
 - Custom ESLint rules enforce translation usage
 
+### 5. Financial Number Typography
+
+- Wrap standalone financial numbers with `FinancialText` or apply `styles.tnum` directly if wrapping is not possible
+
 ## Code Style & Conventions
 
 ### TypeScript Guidelines
@@ -552,6 +556,10 @@ Before committing changes, ensure:
 When creating pull requests:
 
 - **AI-Generated PRs**: If you create a PR using AI assistance, add the **"AI generated"** label to the pull request. This helps maintainers understand the nature of the contribution.
+
+## Code Review Guidelines
+
+When performing code reviews (especially for LLM agents): **see [CODE_REVIEW_GUIDELINES.md](./CODE_REVIEW_GUIDELINES.md)** for specific guidelines.
 
 ## Performance Considerations
 

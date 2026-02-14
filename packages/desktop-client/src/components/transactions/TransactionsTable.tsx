@@ -1,19 +1,19 @@
 import {
   createElement,
   createRef,
-  type CSSProperties,
-  type ForwardedRef,
   forwardRef,
-  type KeyboardEvent,
   memo,
-  type ReactNode,
-  type Ref,
-  type RefObject,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
+  type ForwardedRef,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+  type RefObject,
 } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { Trans, useTranslation } from 'react-i18next';
@@ -61,9 +61,9 @@ import {
 import {
   amountToCurrency,
   currencyToAmount,
-  type IntegerAmount,
   integerToCurrency,
   titleFirst,
+  type IntegerAmount,
 } from 'loot-core/shared/util';
 import {
   type AccountEntity,
@@ -80,8 +80,8 @@ import {
   isLastChild,
   makeTemporaryTransactions,
   selectAscDesc,
-  type SerializedTransaction,
   serializeTransaction,
+  type SerializedTransaction,
   type TransactionEditFunction,
   type TransactionUpdateFunction,
 } from './table/utils';
@@ -108,11 +108,11 @@ import {
   Row,
   SelectCell,
   Table,
+  UnexposedCellContent,
+  useTableNavigator,
   type TableHandleRef,
   type TableNavigator,
   type TableProps,
-  UnexposedCellContent,
-  useTableNavigator,
 } from '@desktop-client/components/table';
 import {
   SchedulesProvider,
@@ -133,8 +133,8 @@ import {
 } from '@desktop-client/hooks/useSelected';
 import { SheetNameProvider } from '@desktop-client/hooks/useSheetName';
 import {
-  type SplitsExpandedContextValue,
   useSplitsExpanded,
+  type SplitsExpandedContextValue,
 } from '@desktop-client/hooks/useSplitsExpanded';
 import { pushModal } from '@desktop-client/modals/modalsSlice';
 import { NotesTagFormatter } from '@desktop-client/notes/NotesTagFormatter';
@@ -187,7 +187,7 @@ const TransactionHeader = memo(
           fontWeight: 300,
           zIndex: 200,
           color: theme.tableHeaderText,
-          backgroundColor: theme.tableBackground,
+          backgroundColor: theme.tableHeaderBackground,
           paddingRight: `${5 + (scrollWidth ?? 0)}px`,
           borderTopWidth: 1,
           borderBottomWidth: 1,
@@ -1827,7 +1827,8 @@ const Transaction = memo(function Transaction({
               : integerToCurrency(runningBalance)
           }
           valueStyle={{
-            color: runningBalance < 0 ? theme.errorText : theme.noticeTextLight,
+            color:
+              runningBalance < 0 ? theme.numberNegative : theme.numberPositive,
           }}
           style={{ ...styles.tnum, ...amountStyle }}
           width={103}

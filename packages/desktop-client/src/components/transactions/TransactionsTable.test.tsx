@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
   forwardRef,
   useState,
@@ -5,16 +6,19 @@ import {
   type RefObject,
   type ReactNode,
 } from 'react';
+=======
+import React, { useEffect, useState } from 'react';
+>>>>>>> v26.2.0
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { format as formatDate, parse as parseDate } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
-  generateTransaction,
   generateAccount,
   generateCategoryGroups,
+  generateTransaction,
 } from 'loot-core/mocks';
 import { initServer } from 'loot-core/platform/client/fetch';
 import { shortcodeToNative } from 'loot-core/shared/emoji';

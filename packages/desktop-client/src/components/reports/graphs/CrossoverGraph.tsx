@@ -5,16 +5,16 @@ import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import { css } from '@emotion/css';
 import {
-  LineChart,
-  Line,
   CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
 } from 'recharts';
 
+import { FinancialText } from '@desktop-client/components/FinancialText';
 import { useRechartsAnimation } from '@desktop-client/components/reports/chart-theme';
 import { Container } from '@desktop-client/components/reports/Container';
 import { useFormat } from '@desktop-client/hooks/useFormat';
@@ -108,7 +108,9 @@ export function CrossoverGraph({
                   <Trans>Monthly investment income:</Trans>
                 </div>
                 <div>
-                  {format(payload[0].payload.investmentIncome, 'financial')}
+                  <FinancialText>
+                    {format(payload[0].payload.investmentIncome, 'financial')}
+                  </FinancialText>
                 </div>
               </View>
               <View
@@ -120,7 +122,11 @@ export function CrossoverGraph({
                 <div>
                   <Trans>Monthly expenses:</Trans>
                 </div>
-                <div>{format(payload[0].payload.expenses, 'financial')}</div>
+                <div>
+                  <FinancialText>
+                    {format(payload[0].payload.expenses, 'financial')}
+                  </FinancialText>
+                </div>
               </View>
               {payload[0].payload.adjustedExpenses != null && (
                 <View
@@ -133,7 +139,9 @@ export function CrossoverGraph({
                     <Trans>Target income:</Trans>
                   </div>
                   <div>
-                    {format(payload[0].payload.adjustedExpenses, 'financial')}
+                    <FinancialText>
+                      {format(payload[0].payload.adjustedExpenses, 'financial')}
+                    </FinancialText>
                   </div>
                 </View>
               )}
@@ -146,7 +154,11 @@ export function CrossoverGraph({
                 <div>
                   <Trans>Life savings:</Trans>
                 </div>
-                <div>{format(payload[0].payload.nestEgg, 'financial')}</div>
+                <div>
+                  <FinancialText>
+                    {format(payload[0].payload.nestEgg, 'financial')}
+                  </FinancialText>
+                </div>
               </View>
             </div>
           </div>
@@ -163,73 +175,66 @@ export function CrossoverGraph({
       }}
     >
       {(width, height) => (
-        <ResponsiveContainer>
-          <div style={{ ...(!compact && { marginTop: '15px' }) }}>
-            <LineChart
-              width={width}
-              height={height}
-              data={graphData.data}
-              margin={{
-                top: 0,
-                right: 0,
-                left: compact ? 0 : 20,
-                bottom: compact ? 0 : 10,
-              }}
-            >
-              {!compact && <CartesianGrid strokeDasharray="3 3" />}
-              <XAxis
-                dataKey="x"
-                hide={compact}
-                tick={{ fill: theme.pageText }}
-                tickLine={{ stroke: theme.pageText }}
-              />
-              <YAxis
-                hide={compact}
-                tickFormatter={tickFormatter}
-                tick={{ fill: theme.pageText }}
-                tickLine={{ stroke: theme.pageText }}
-              />
-              {showTooltip && (
-                <Tooltip
-                  content={<CustomTooltip />}
-                  isAnimationActive={false}
-                />
-              )}
-              {graphData.crossoverXLabel && (
-                <ReferenceLine
-                  x={graphData.crossoverXLabel}
-                  stroke={theme.noticeText}
-                  strokeDasharray="4 4"
-                />
-              )}
-              <Line
-                type="monotone"
-                dataKey="investmentIncome"
-                dot={false}
-                stroke={theme.reportsBlue}
-                strokeWidth={2}
-                {...animationProps}
-              />
-              <Line
-                type="monotone"
-                dataKey="expenses"
-                dot={false}
-                stroke={theme.reportsRed}
-                strokeWidth={2}
-                {...animationProps}
-              />
-              <Line
-                type="monotone"
-                dataKey="adjustedExpenses"
-                dot={false}
-                stroke={theme.reportsRed}
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                {...animationProps}
-              />
-            </LineChart>
-          </div>
-        </ResponsiveContainer>
+        <LineChart
+          width={width}
+          height={height}
+          data={graphData.data}
+          margin={{
+            top: compact ? 0 : 15,
+            right: 0,
+            left: compact ? 0 : 20,
+            bottom: compact ? 0 : 10,
+          }}
+        >
+          {!compact && <CartesianGrid strokeDasharray="3 3" />}
+          <XAxis
+            dataKey="x"
+            hide={compact}
+            tick={{ fill: theme.pageText }}
+            tickLine={{ stroke: theme.pageText }}
+          />
+          <YAxis
+            hide={compact}
+            tickFormatter={tickFormatter}
+            tick={{ fill: theme.pageText }}
+            tickLine={{ stroke: theme.pageText }}
+          />
+          {showTooltip && (
+            <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
+          )}
+          {graphData.crossoverXLabel && (
+            <ReferenceLine
+              x={graphData.crossoverXLabel}
+              stroke={theme.noticeText}
+              strokeDasharray="4 4"
+            />
+          )}
+          <Line
+            type="monotone"
+            dataKey="investmentIncome"
+            dot={false}
+            stroke={theme.reportsNumberPositive}
+            strokeWidth={2}
+            {...animationProps}
+          />
+          <Line
+            type="monotone"
+            dataKey="expenses"
+            dot={false}
+            stroke={theme.reportsNumberNegative}
+            strokeWidth={2}
+            {...animationProps}
+          />
+          <Line
+            type="monotone"
+            dataKey="adjustedExpenses"
+            dot={false}
+            stroke={theme.reportsNumberNegative}
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            {...animationProps}
+          />
+        </LineChart>
       )}
     </Container>
   );

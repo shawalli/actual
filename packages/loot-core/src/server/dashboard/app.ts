@@ -6,9 +6,9 @@ import * as fs from '../../platform/server/fs';
 import { DEFAULT_DASHBOARD_STATE } from '../../shared/dashboard';
 import { q } from '../../shared/query';
 import {
+  type ExportImportCustomReportWidget,
   type ExportImportDashboard,
   type ExportImportDashboardWidget,
-  type ExportImportCustomReportWidget,
   type Widget,
 } from '../../types/models';
 import { type EverythingButIdOptional } from '../../types/util';
@@ -34,6 +34,7 @@ function isWidgetType(type: string): type is Widget['type'] {
     'cash-flow-card',
     'spending-card',
     'crossover-card',
+    'budget-analysis-card',
     'markdown-card',
     'summary-card',
     'calendar-card',

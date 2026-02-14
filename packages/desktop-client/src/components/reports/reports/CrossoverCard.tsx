@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { useTranslation, Trans } from 'react-i18next';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { Block } from '@actual-app/components/block';
 import { useResponsive } from '@actual-app/components/hooks/useResponsive';
@@ -171,6 +171,7 @@ export function CrossoverCard({
 
   const swr = meta?.safeWithdrawalRate ?? 0.04;
   const estimatedReturn = meta?.estimatedReturn ?? null;
+  const expectedContribution = meta?.expectedContribution ?? null;
   const projectionType: 'hampel' | 'median' | 'mean' =
     meta?.projectionType ?? 'hampel';
   const expenseAdjustmentFactor = meta?.expenseAdjustmentFactor ?? 1.0;
@@ -183,7 +184,8 @@ export function CrossoverCard({
         expenseCategoryIds,
         incomeAccountIds,
         safeWithdrawalRate: swr,
-        estimatedReturn: estimatedReturn == null ? null : estimatedReturn,
+        estimatedReturn,
+        expectedContribution,
         projectionType,
         expenseAdjustmentFactor,
       }),
@@ -194,6 +196,7 @@ export function CrossoverCard({
       incomeAccountIds,
       swr,
       estimatedReturn,
+      expectedContribution,
       projectionType,
       expenseAdjustmentFactor,
     ],

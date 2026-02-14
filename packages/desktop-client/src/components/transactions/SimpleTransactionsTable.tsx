@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 
+import { SvgFlag } from '@actual-app/components/icons/v1';
 import { SvgArrowsSynchronize } from '@actual-app/components/icons/v2';
 import { styles } from '@actual-app/components/styles';
 import { theme } from '@actual-app/components/theme';
@@ -16,6 +17,7 @@ import {
   parseISO,
 } from 'date-fns';
 
+import { shortcodeToNative } from 'loot-core/shared/emoji';
 import * as monthUtils from 'loot-core/shared/months';
 import { type TransactionEntity } from 'loot-core/types/models';
 
@@ -92,6 +94,37 @@ const TransactionRow = memo(function TransactionRow({
             return (
               <Field key={i} width={100}>
                 {transaction.date}
+              </Field>
+            );
+          case 'flag':
+            return (
+              <Field
+                key={i}
+                width={45}
+                truncate={false}
+                style={{
+                  fontSize: '18px',
+                  color: transaction.flag
+                    ? theme.tableText
+                    : theme.tableTextSubdued,
+                }}
+                contentStyle={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                {transaction.flag ? (
+                  <span>{shortcodeToNative(transaction.flag)}</span>
+                ) : (
+                  <SvgFlag
+                    style={{
+                      width: 14,
+                      height: 14,
+                      color: theme.tableTextSubdued,
+                    }}
+                  />
+                )}
               </Field>
             );
           case 'imported_payee':
@@ -183,6 +216,7 @@ export function SimpleTransactionsTable({
   fields = ['date', 'payee', 'amount'],
   style,
 }: SimpleTransactionsTableProps) {
+  const { t } = useTranslation();
   const format = useFormat();
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
   const selectedItems = useSelectedItems();
@@ -232,6 +266,17 @@ export function SimpleTransactionsTable({
                 return (
                   <Field key={i} width={100}>
                     <Trans>Date</Trans>
+                  </Field>
+                );
+              case 'flag':
+                return (
+                  <Field
+                    key={i}
+                    width={45}
+                    style={{ textAlign: 'center' }}
+                    aria-label={t('Flag')}
+                  >
+                    {/* Empty header for flag column */}
                   </Field>
                 );
               case 'imported_payee':

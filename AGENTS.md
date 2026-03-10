@@ -42,6 +42,28 @@ yarn start:desktop
 - Use `yarn workspace <workspace-name> run <command>` for workspace-specific tasks
 - Tests run once and exit by default (using `vitest --run`)
 
+### ⚠️ CRITICAL REQUIREMENT: AI-Generated Commit Messages and PR Titles
+
+**THIS IS A MANDATORY REQUIREMENT THAT MUST BE FOLLOWED WITHOUT EXCEPTION:**
+
+- **ALL commit messages MUST be prefixed with `[AI]`**
+- **ALL pull request titles MUST be prefixed with `[AI]`**
+
+**Examples:**
+
+- ✅ `[AI] Fix type error in account validation`
+- ✅ `[AI] Add support for new transaction categories`
+- ❌ `Fix type error in account validation` (MISSING PREFIX - NOT ALLOWED)
+- ❌ `Add support for new transaction categories` (MISSING PREFIX - NOT ALLOWED)
+
+**This requirement applies to:**
+
+- Every single commit message created by AI agents
+- Every single pull request title created by AI agents
+- No exceptions are permitted
+
+**This is a hard requirement that agents MUST follow. Failure to include the `[AI]` prefix is a violation of these instructions.**
+
 ### Task Orchestration with Lage
 
 The project uses **[lage](https://microsoft.github.io/lage/)** (a task runner for JavaScript monorepos) to efficiently run tests and other tasks across multiple workspaces:
@@ -338,6 +360,8 @@ Always maintain newlines between import groups.
 
 **Git Commands:**
 
+- **MANDATORY: ALL commit messages MUST be prefixed with `[AI]`** - This is a hard requirement with no exceptions
+- **MANDATORY: ALL pull request titles MUST be prefixed with `[AI]`** - This is a hard requirement with no exceptions
 - Never update git config
 - Never run destructive git operations (force push, hard reset) unless explicitly requested
 - Never skip hooks (--no-verify, --no-gpg-sign)
@@ -505,7 +529,7 @@ Icons in `packages/component-library/src/icons/` are auto-generated. Don't manua
 
 1. Clean build artifacts: `rm -rf packages/*/dist packages/*/lib-dist packages/*/build`
 2. Reinstall dependencies: `yarn install`
-3. Check Node.js version (requires >=20)
+3. Check Node.js version (requires >=22)
 4. Check Yarn version (requires ^4.9.1)
 
 ## Testing Patterns
@@ -541,6 +565,7 @@ Icons in `packages/component-library/src/icons/` are auto-generated. Don't manua
 
 Before committing changes, ensure:
 
+- [ ] **MANDATORY: Commit message is prefixed with `[AI]`** - This is a hard requirement with no exceptions
 - [ ] `yarn typecheck` passes
 - [ ] `yarn lint:fix` has been run
 - [ ] Relevant tests pass
@@ -555,7 +580,15 @@ Before committing changes, ensure:
 
 When creating pull requests:
 
+- **MANDATORY PREFIX REQUIREMENT**: **ALL pull request titles MUST be prefixed with `[AI]`** - This is a hard requirement that MUST be followed without exception
+  - ✅ Correct: `[AI] Fix type error in account validation`
+  - ❌ Incorrect: `Fix type error in account validation` (MISSING PREFIX - NOT ALLOWED)
 - **AI-Generated PRs**: If you create a PR using AI assistance, add the **"AI generated"** label to the pull request. This helps maintainers understand the nature of the contribution.
+
+### PR Template: Do Not Fill In
+
+- **NEVER fill in the PR template** (`.github/PULL_REQUEST_TEMPLATE.md`). Leave all blank spaces and placeholder comments as-is. We expect **humans** to fill in the Description, Related issue(s), Testing, and Checklist sections.
+- **Exception**: If a human **explicitly asks** you to fill out the PR template, then fill it out **in Chinese**, using Chinese characters (简体中文) for all content you add.
 
 ## Code Review Guidelines
 
@@ -586,7 +619,7 @@ yarn install:server
 
 ## Environment Requirements
 
-- **Node.js**: >=20
+- **Node.js**: >=22
 - **Yarn**: ^4.9.1 (managed by packageManager field)
 - **Browser Targets**: Electron >= 35.0, modern browsers (see browserslist)
 
@@ -599,3 +632,40 @@ The codebase is actively being migrated:
 - **React.\* → Named Imports**: Legacy React.\* patterns being removed
 
 When working with older code, follow the newer patterns described in this guide.
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+| Service             | Command                 | Port | Required                      |
+| ------------------- | ----------------------- | ---- | ----------------------------- |
+| Web Frontend (Vite) | `yarn start`            | 3001 | Yes                           |
+| Sync Server         | `yarn start:server-dev` | 5006 | Optional (sync features only) |
+
+All storage is **SQLite** (file-based via `better-sqlite3`). No external databases or services are needed.
+
+### Running the app
+
+- `yarn start` builds the plugins-service worker, loot-core browser backend, and starts the Vite dev server on port **3001**.
+- `yarn start:server-dev` starts both the sync server (port 5006) and the web frontend together.
+- The Vite HMR dev server serves many unbundled modules. In constrained environments, the browser may hit `ERR_INSUFFICIENT_RESOURCES`. If that happens, use `yarn build:browser` followed by serving the built output from `packages/desktop-client/build/` with proper COOP/COEP headers (`Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Embedder-Policy: require-corp`).
+
+### Lint, test, typecheck
+
+Standard commands documented in `package.json` scripts and the Quick Start section above:
+
+- `yarn lint` / `yarn lint:fix` (uses oxlint + oxfmt)
+- `yarn test` (lage across all workspaces)
+- `yarn typecheck` (tsc + lage typecheck)
+
+### Testing and previewing the app
+
+When running the app for manual testing or demos, use **"View demo"** on the initial setup screen (after selecting "Don't use a server"). This creates a test budget pre-populated with realistic sample data (accounts, transactions, categories, and budgeted amounts), which is far more useful than starting with an empty budget.
+
+### Gotchas
+
+- The `engines` field requires **Node.js >=22** and **Yarn ^4.9.1**. The `.nvmrc` specifies `v22/*`.
+- Pre-commit hook runs `lint-staged` (oxfmt + oxlint) via Husky. Run `yarn prepare` once after install to set up hooks.
+- Lage caches test results in `.lage/`. If tests behave unexpectedly, clear with `rm -rf .lage`.
+- Native modules (`better-sqlite3`, `bcrypt`) require build tools (`gcc`, `make`, `python3`). These are pre-installed in the Cloud VM.
+- All yarn commands must be run from the repository root, never from child workspaces.

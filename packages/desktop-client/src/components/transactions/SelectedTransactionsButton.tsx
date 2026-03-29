@@ -27,6 +27,7 @@ type SelectedTransactionsButtonProps = {
   onEdit: (
     type:
       | 'date'
+      | 'flag'
       | 'amount'
       | 'account'
       | 'payee'
@@ -264,6 +265,10 @@ export function SelectedTransactionsButton({
     onEdit,
     selectedIds,
   ]);
+  useHotkeys('j', () => onEdit('flag', selectedIds), hotKeyOptions, [
+    onEdit,
+    selectedIds,
+  ]);
   useHotkeys(
     's',
     () =>
@@ -394,6 +399,7 @@ export function SelectedTransactionsButton({
               Menu.line,
               { type: Menu.label, name: t('Edit field'), text: '' } as const,
               { name: 'date', text: t('Date'), key: 'E' } as const,
+              { name: 'flag', text: t('Flag'), key: 'J' } as const,
               { name: 'account', text: t('Account'), key: 'A' } as const,
               { name: 'payee', text: t('Payee'), key: 'P' } as const,
               { name: 'notes', text: t('Notes'), key: 'N' } as const,

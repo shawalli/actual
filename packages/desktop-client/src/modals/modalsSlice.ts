@@ -261,6 +261,13 @@ export type Modal =
       };
     }
   | {
+      name: 'emoji-autocomplete';
+      options: {
+        onSelect: (emoji: string | null) => void;
+        onClose?: () => void;
+      };
+    }
+  | {
       name: 'budget-summary';
       options: {
         month: string;

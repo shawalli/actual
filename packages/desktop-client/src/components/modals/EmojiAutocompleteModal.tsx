@@ -1,0 +1,83 @@
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { useResponsive } from '@actual-app/components/hooks/useResponsive';
+import { theme } from '@actual-app/components/theme';
+import { View } from '@actual-app/components/view';
+
+import {
+  Modal,
+  ModalCloseButton,
+  ModalHeader,
+  ModalTitle,
+} from '@desktop-client/components/common/Modal';
+import { SectionLabel } from '@desktop-client/components/forms';
+import { EmojiSelect } from '@desktop-client/components/select/EmojiSelect';
+import type { Modal as ModalType } from '@desktop-client/modals/modalsSlice';
+
+type EmojiAutocompleteModalProps = Extract<
+  ModalType,
+  { name: 'emoji-autocomplete' }
+>['options'];
+
+export function EmojiAutocompleteModal({
+  onSelect,
+  onClose,
+}: EmojiAutocompleteModalProps) {
+  const { t } = useTranslation();
+  const { isNarrowWidth } = useResponsive();
+
+  return (
+    <Modal
+      name="emoji-autocomplete"
+      noAnimation={!isNarrowWidth}
+      onClose={onClose}
+      containerProps={{
+        style: {
+          height: isNarrowWidth
+            ? 'calc(var(--visual-viewport-height) * 0.85)'
+            : 'auto',
+          backgroundColor: theme.menuAutoCompleteBackground,
+          minWidth: 225,
+          maxWidth: 225,
+        },
+      }}
+    >
+      {({ state: { close } }) => (
+        <>
+          {isNarrowWidth && (
+            <ModalHeader
+              rightContent={
+                <ModalCloseButton
+                  onPress={close}
+                  style={{ color: theme.menuAutoCompleteText }}
+                />
+              }
+            />
+          )}
+          <View>
+            <View style={{ flex: 1, padding: 10 }}>
+              <EmojiSelect
+                value={null}
+                isOpen
+                embedded
+                focused
+                openOnFocus={false}
+                clearOnBlur={false}
+                onSelect={emoji => {
+                  onSelect(emoji);
+                  close();
+                }}
+                inputProps={{
+                  onBlur: () => {},
+                  onKeyDown: () => {},
+                  style: {},
+                }}
+              />
+            </View>
+          </View>
+        </>
+      )}
+    </Modal>
+  );
+}

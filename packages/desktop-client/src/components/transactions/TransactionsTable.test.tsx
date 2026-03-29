@@ -1,10 +1,5 @@
-import {
-  forwardRef,
-  useState,
-  useEffect,
-  type RefObject,
-  type ReactNode,
-} from 'react';
+import { forwardRef, useEffect, useState } from 'react';
+import type { ReactNode, RefObject } from 'react';
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -16,7 +11,7 @@ import {
   generateCategoryGroups,
   generateTransaction,
 } from 'loot-core/mocks';
-import { initServer } from 'loot-core/platform/client/fetch';
+import { initServer } from 'loot-core/platform/client/connection';
 import { shortcodeToNative } from 'loot-core/shared/emoji';
 import {
   addSplitTransaction,

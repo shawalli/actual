@@ -323,4 +323,73 @@ test.describe('Transactions', () => {
       await fs.unlink(path);
     }
   });
+
+  test.describe('bulk-edit flag', () => {
+    test('sets a flag on a single selected transaction', async () => {
+      await accountPage.createSingleTransaction({
+        payee: 'Home Depot',
+        notes: 'Bulk flag test',
+        debit: '10.00',
+      });
+
+      await accountPage.selectNthTransaction(0);
+      await accountPage.bulkSetFlag(':red_circle:');
+
+      await expect(accountPage.getNthTransaction(0).flag).toContainText('🔴');
+    });
+
+    test('sets a flag on multiple selected transactions', async () => {
+      await accountPage.createSingleTransaction({
+        payee: 'Home Depot',
+        debit: '10.00',
+      });
+      await accountPage.createSingleTransaction({
+        payee: 'Kroger',
+        debit: '20.00',
+      });
+
+      await accountPage.selectNthTransaction(0);
+      await accountPage.selectNthTransaction(1);
+      await accountPage.bulkSetFlag(':red_circle:');
+
+      await expect(accountPage.getNthTransaction(0).flag).toContainText('🔴');
+      await expect(accountPage.getNthTransaction(1).flag).toContainText('🔴');
+    });
+
+    test('overwrites an existing flag on selected transactions', async () => {
+      // Create one transaction with a flag and one without
+      await accountPage.createSingleTransaction({
+        payee: 'Home Depot',
+        debit: '10.00',
+        flag: ':red_circle:',
+      });
+      await accountPage.createSingleTransaction({
+        payee: 'Kroger',
+        debit: '20.00',
+      });
+
+      await accountPage.selectNthTransaction(0);
+      await accountPage.selectNthTransaction(1);
+      await accountPage.bulkSetFlag(':large_blue_circle:');
+
+      await expect(accountPage.getNthTransaction(0).flag).toContainText('🔵');
+      await expect(accountPage.getNthTransaction(1).flag).toContainText('🔵');
+    });
+
+    test('clears the flag on selected transactions', async () => {
+      await accountPage.createSingleTransaction({
+        payee: 'Home Depot',
+        debit: '10.00',
+        flag: ':red_circle:',
+      });
+
+      await accountPage.selectNthTransaction(0);
+      await accountPage.bulkClearFlag();
+
+      // After clearing, the flag cell should not contain an emoji
+      await expect(accountPage.getNthTransaction(0).flag).not.toContainText(
+        '🔴',
+      );
+    });
+  });
 });

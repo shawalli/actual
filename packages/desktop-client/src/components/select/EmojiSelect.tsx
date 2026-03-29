@@ -5,10 +5,8 @@ import {
   useMemo,
   useRef,
   useState,
-  type ComponentProps,
-  type KeyboardEvent,
-  type ReactNode,
 } from 'react';
+import type { ComponentProps, KeyboardEvent, ReactNode } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
@@ -18,9 +16,12 @@ import { Popover } from '@actual-app/components/popover';
 import { styles } from '@actual-app/components/styles';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import data, { type EmojiMartData } from '@emoji-mart/data';
+import data from '@emoji-mart/data';
+import type { EmojiMartData } from '@emoji-mart/data';
 
 import { shortcodeToNative as shortcodeToNativeUtil } from 'loot-core/shared/emoji';
+
+import { useProperFocus } from '@desktop-client/hooks/useProperFocus';
 
 const emojiData = data as EmojiMartData;
 
@@ -48,6 +49,7 @@ type EmojiSelectProps = {
   value: string | null;
   isOpen?: boolean;
   embedded?: boolean;
+  focused?: boolean;
   openOnFocus?: boolean;
   shouldSaveFromKey?: (e: KeyboardEvent<HTMLInputElement>) => boolean;
   clearOnBlur?: boolean;
@@ -59,6 +61,7 @@ export function EmojiSelect({
   value,
   isOpen: externalIsOpen,
   embedded = false,
+  focused = false,
   openOnFocus = true,
   shouldSaveFromKey: shouldSaveFromKeyProp = defaultShouldSaveFromKey,
   clearOnBlur = true,
@@ -93,7 +96,12 @@ export function EmojiSelect({
   const emojiGridRef = useRef<HTMLDivElement | null>(null);
   const popoverContentRef = useRef<HTMLDivElement | null>(null);
 
-  const emojisPerRow = 7;
+  useProperFocus(innerRef, focused);
+
+  // Grid layout constants
+  // Regular popover (in table): 7 emojis per row
+  // Bulk popover (in modal): 16 emojis per row
+  const emojisPerRow = embedded ? 16 : 7;
   const emojiSize = 24;
   const emojiGap = 4;
   const maxVisibleRows = 3;
@@ -101,9 +109,16 @@ export function EmojiSelect({
   const maxHeight =
     maxVisibleRows * emojiSize + (maxVisibleRows - 1) * emojiGap + gridPaddingY;
   const gridContentWidth =
-    emojisPerRow * emojiSize + (emojisPerRow - 1) * emojiGap + 8;
-  const popoverWidth = Math.max(225, gridContentWidth + 12);
-
+    emojisPerRow * emojiSize +
+    (emojisPerRow - 1) * emojiGap +
+    // grid padding left+right
+    8;
+  // Calculate popover width based on grid size
+  // Regular popover: match other pickers (225px min)
+  // Bulk popover: fit the 16-emoji grid
+  const popoverWidth = embedded
+    ? gridContentWidth + 8
+    : Math.max(225, gridContentWidth + 12);
   const clearSelection = useCallback(() => {
     selectionRef.current = null;
     selectionAnchorRef.current = null;
@@ -958,7 +973,7 @@ export function EmojiSelect({
         aria-label={t('Flag')}
       />
 
-      {showPlaceholder && (
+      {showPlaceholder && !embedded && (
         <View
           style={{
             position: 'absolute',

@@ -109,8 +109,8 @@ export function useTransactionBatchActions() {
           return;
         }
 
-        // Skip child transactions - they should not be bulk edited directly
-        if (trans.is_child) {
+        // Skip child transactions for flag edits - flags are set on parent only
+        if (name === 'flag' && trans.is_child) {
           return;
         }
 
@@ -264,8 +264,8 @@ export function useTransactionBatchActions() {
       name === 'amount' ||
       name === 'payee' ||
       name === 'account' ||
-      name === 'date' ||
-      name === 'flag'
+      name === 'flag' ||
+      name === 'date'
     ) {
       const reconciledTransactions = transactions.filter(t => t.reconciled);
       if (reconciledTransactions.length > 0) {

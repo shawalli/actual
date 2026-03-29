@@ -5,15 +5,15 @@ import { useResponsive } from '@actual-app/components/hooks/useResponsive';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import { EmojiSelect } from '@desktop-client/components/select/EmojiSelect';
 import {
-  ModalCloseButton,
   Modal,
-  ModalTitle,
+  ModalCloseButton,
   ModalHeader,
+  ModalTitle,
 } from '@desktop-client/components/common/Modal';
 import { SectionLabel } from '@desktop-client/components/forms';
-import { type Modal as ModalType } from '@desktop-client/modals/modalsSlice';
+import { EmojiSelect } from '@desktop-client/components/select/EmojiSelect';
+import type { Modal as ModalType } from '@desktop-client/modals/modalsSlice';
 
 type EmojiAutocompleteModalProps = Extract<
   ModalType,
@@ -75,9 +75,9 @@ export function EmojiAutocompleteModal({
             <View style={{ flex: 1, padding: 10 }}>
               <EmojiSelect
                 value={null}
-                isOpen={true}
-                embedded={true}
-                focused={true}
+                isOpen
+                embedded
+                focused
                 openOnFocus={false}
                 clearOnBlur={false}
                 onSelect={emoji => {
@@ -97,4 +97,3 @@ export function EmojiAutocompleteModal({
     </Modal>
   );
 }
-

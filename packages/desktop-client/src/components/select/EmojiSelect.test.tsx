@@ -1,4 +1,5 @@
-import { forwardRef, type FocusEvent, type ReactNode } from 'react';
+import { forwardRef } from 'react';
+import type { FocusEvent, ReactNode } from 'react';
 
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

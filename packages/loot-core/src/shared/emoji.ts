@@ -1,4 +1,5 @@
-import data, { type EmojiMartData } from '@emoji-mart/data';
+import data from '@emoji-mart/data';
+import type { EmojiMartData } from '@emoji-mart/data';
 
 const emojiData = data as EmojiMartData;
 

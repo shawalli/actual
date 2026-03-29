@@ -1,14 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ComponentProps,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { ComponentProps, KeyboardEvent, ReactNode } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
@@ -18,10 +9,12 @@ import { Popover } from '@actual-app/components/popover';
 import { styles } from '@actual-app/components/styles';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import data, { type EmojiMartData } from '@emoji-mart/data';
+import data from '@emoji-mart/data';
+import type { EmojiMartData } from '@emoji-mart/data';
+
+import { shortcodeToNative as shortcodeToNativeUtil } from 'loot-core/shared/emoji';
 
 import { useProperFocus } from '@desktop-client/hooks/useProperFocus';
-import { shortcodeToNative as shortcodeToNativeUtil } from 'loot-core/shared/emoji';
 
 const emojiData = data as EmojiMartData;
 

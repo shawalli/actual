@@ -1,10 +1,5 @@
-import {
-  forwardRef,
-  useState,
-  useEffect,
-  type RefObject,
-  type ReactNode,
-} from 'react';
+import { forwardRef, useState, useEffect } from 'react';
+import type { RefObject, ReactNode } from 'react';
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

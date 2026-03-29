@@ -27,13 +27,13 @@ type SelectedTransactionsButtonProps = {
   onEdit: (
     type:
       | 'date'
+      | 'flag'
       | 'amount'
       | 'account'
       | 'payee'
       | 'notes'
       | 'category'
-      | 'cleared'
-      | 'flag',
+      | 'cleared',
     selectedIds: string[],
   ) => void;
   onLinkSchedule: (selectedIds: string[]) => void;
@@ -399,13 +399,13 @@ export function SelectedTransactionsButton({
               Menu.line,
               { type: Menu.label, name: t('Edit field'), text: '' } as const,
               { name: 'date', text: t('Date'), key: 'E' } as const,
+              { name: 'flag', text: t('Flag'), key: 'J' } as const,
               { name: 'account', text: t('Account'), key: 'A' } as const,
               { name: 'payee', text: t('Payee'), key: 'P' } as const,
               { name: 'notes', text: t('Notes'), key: 'N' } as const,
               { name: 'category', text: t('Category'), key: 'C' } as const,
               { name: 'amount', text: t('Amount'), key: 'M' } as const,
               { name: 'cleared', text: t('Cleared'), key: 'L' } as const,
-              { name: 'flag', text: t('Flag'), key: 'J' } as const,
             ]),
       ]}
       onSelect={name => {

@@ -155,6 +155,31 @@ export class AccountPage {
   }
 
   /**
+   * Bulk-set a flag on the currently selected transactions.
+   * Shortcode format, e.g. ':red_circle:'
+   */
+  async bulkSetFlag(shortcode: string) {
+    await this.clickSelectAction('Flag');
+    const modal = this.page.getByTestId('emoji-autocomplete-modal');
+    await modal.waitFor({ state: 'visible' });
+    const input = modal.getByRole('textbox');
+    await input.pressSequentially(shortcode);
+    await input.press('Enter');
+    await modal.waitFor({ state: 'hidden' });
+  }
+
+  /**
+   * Bulk-clear the flag on the currently selected transactions.
+   */
+  async bulkClearFlag() {
+    await this.clickSelectAction('Flag');
+    const modal = this.page.getByTestId('emoji-autocomplete-modal');
+    await modal.waitFor({ state: 'visible' });
+    await modal.getByRole('button', { name: 'Remove' }).click();
+    await modal.waitFor({ state: 'hidden' });
+  }
+
+  /**
    * Open the modal for closing the account.
    */
   async clickCloseAccount() {

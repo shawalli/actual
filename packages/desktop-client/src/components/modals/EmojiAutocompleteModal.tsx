@@ -47,12 +47,6 @@ export function EmojiAutocompleteModal({
         <>
           {isNarrowWidth && (
             <ModalHeader
-              title={
-                <ModalTitle
-                  title={t('Flag')}
-                  getStyle={() => ({ color: theme.menuAutoCompleteText })}
-                />
-              }
               rightContent={
                 <ModalCloseButton
                   onPress={close}
@@ -62,16 +56,6 @@ export function EmojiAutocompleteModal({
             />
           )}
           <View>
-            {!isNarrowWidth && (
-              <SectionLabel
-                title={t('Flag')}
-                style={{
-                  alignSelf: 'center',
-                  color: theme.menuAutoCompleteText,
-                  marginBottom: 10,
-                }}
-              />
-            )}
             <View style={{ flex: 1, padding: 10 }}>
               <EmojiSelect
                 value={null}

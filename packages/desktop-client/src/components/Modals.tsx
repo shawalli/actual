@@ -28,6 +28,7 @@ import { CreateLocalAccountModal } from './modals/CreateLocalAccountModal';
 import { EditUserAccess } from './modals/EditAccess';
 import { EditFieldModal } from './modals/EditFieldModal';
 import { EditRuleModal } from './modals/EditRuleModal';
+import { EmojiAutocompleteModal } from './modals/EmojiAutocompleteModal';
 import { EditUserFinanceApp } from './modals/EditUser';
 import { EnvelopeBalanceMenuModal } from './modals/EnvelopeBalanceMenuModal';
 import { EnvelopeBudgetMenuModal } from './modals/EnvelopeBudgetMenuModal';
@@ -217,6 +218,9 @@ export function Modals() {
 
         case 'payee-autocomplete':
           return <PayeeAutocompleteModal key={key} {...modal.options} />;
+
+        case 'emoji-autocomplete':
+          return <EmojiAutocompleteModal key={key} {...modal.options} />;
 
         case 'payee-category-learning':
           return <CategoryLearning key={key} />;

@@ -32,7 +32,8 @@ type SelectedTransactionsButtonProps = {
       | 'payee'
       | 'notes'
       | 'category'
-      | 'cleared',
+      | 'cleared'
+      | 'flag',
     selectedIds: string[],
   ) => void;
   onLinkSchedule: (selectedIds: string[]) => void;
@@ -264,6 +265,10 @@ export function SelectedTransactionsButton({
     onEdit,
     selectedIds,
   ]);
+  useHotkeys('j', () => onEdit('flag', selectedIds), hotKeyOptions, [
+    onEdit,
+    selectedIds,
+  ]);
   useHotkeys(
     's',
     () =>
@@ -400,6 +405,7 @@ export function SelectedTransactionsButton({
               { name: 'category', text: t('Category'), key: 'C' } as const,
               { name: 'amount', text: t('Amount'), key: 'M' } as const,
               { name: 'cleared', text: t('Cleared'), key: 'L' } as const,
+              { name: 'flag', text: t('Flag'), key: 'J' } as const,
             ]),
       ]}
       onSelect={name => {

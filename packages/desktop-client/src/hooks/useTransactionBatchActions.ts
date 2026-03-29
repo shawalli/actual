@@ -109,6 +109,11 @@ export function useTransactionBatchActions() {
           return;
         }
 
+        // Skip child transactions - they should not be bulk edited directly
+        if (trans.is_child) {
+          return;
+        }
+
         if (!idSet.has(trans.id)) {
           // Skip transactions which aren't actually selected, since the query
           // above also retrieves the siblings & parent of any selected splits.
@@ -242,11 +247,25 @@ export function useTransactionBatchActions() {
       );
     };
 
+    const pushEmojiAutocompleteModal = () => {
+      dispatch(
+        pushModal({
+          modal: {
+            name: 'emoji-autocomplete',
+            options: {
+              onSelect: (emoji: string | null) => onChange(name, emoji),
+            },
+          },
+        }),
+      );
+    };
+
     if (
       name === 'amount' ||
       name === 'payee' ||
       name === 'account' ||
-      name === 'date'
+      name === 'date' ||
+      name === 'flag'
     ) {
       const reconciledTransactions = transactions.filter(t => t.reconciled);
       if (reconciledTransactions.length > 0) {
@@ -260,6 +279,8 @@ export function useTransactionBatchActions() {
                     pushPayeeAutocompleteModal();
                   } else if (name === 'account') {
                     pushAccountAutocompleteModal();
+                  } else if (name === 'flag') {
+                    pushEmojiAutocompleteModal();
                   } else {
                     pushEditField();
                   }
@@ -283,6 +304,8 @@ export function useTransactionBatchActions() {
       pushPayeeAutocompleteModal();
     } else if (name === 'account') {
       pushAccountAutocompleteModal();
+    } else if (name === 'flag') {
+      pushEmojiAutocompleteModal();
     } else {
       pushEditField();
     }

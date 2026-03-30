@@ -21,6 +21,7 @@ import {
 } from 'date-fns';
 
 import { send } from 'loot-core/platform/client/connection';
+import { nativeToShortcode } from 'loot-core/shared/emoji';
 import { getMonthYearFormat } from 'loot-core/shared/months';
 import {
   deserializeField,
@@ -71,6 +72,7 @@ const filterFields = [
   'cleared',
   'reconciled',
   'transfer',
+  'flag',
 ].map(field => [field, mapField(field)]);
 
 type ConfigureFieldProps<T extends RuleConditionEntity> =
@@ -296,37 +298,43 @@ function ConfigureField<T extends RuleConditionEntity>({
           });
         }}
       >
-        {type !== 'boolean' && (field !== 'payee' || !isPayeeIdOp(op)) && (
-          <GenericInput
-            ref={inputRef}
-            // @ts-expect-error - fix me
-            field={field === 'date' || field === 'category' ? subfield : field}
-            // @ts-expect-error - fix me
-            type={
-              type === 'id' &&
-              (op === 'contains' ||
-                op === 'matches' ||
-                op === 'doesNotContain' ||
-                op === 'hasTags')
-                ? 'string'
-                : type
-            }
-            numberFormatType="currency"
-            // @ts-expect-error - fix me
-            value={
-              formattedValue ?? (op === 'oneOf' || op === 'notOneOf' ? [] : '')
-            }
-            // @ts-expect-error - fix me
-            multi={op === 'oneOf' || op === 'notOneOf'}
-            op={op}
-            options={subfieldToOptions(field, subfield)}
-            style={{ marginTop: 10 }}
-            // oxlint-disable-next-line typescript/no-explicit-any
-            onChange={(v: any) => {
-              dispatch({ type: 'set-value', value: v });
-            }}
-          />
-        )}
+        {type !== 'boolean' &&
+          op !== 'isSet' &&
+          op !== 'isNotSet' &&
+          (field !== 'payee' || !isPayeeIdOp(op)) && (
+            <GenericInput
+              ref={inputRef}
+              // @ts-expect-error - fix me
+              field={
+                field === 'date' || field === 'category' ? subfield : field
+              }
+              // @ts-expect-error - fix me
+              type={
+                type === 'id' &&
+                (op === 'contains' ||
+                  op === 'matches' ||
+                  op === 'doesNotContain' ||
+                  op === 'hasTags')
+                  ? 'string'
+                  : type
+              }
+              numberFormatType="currency"
+              // @ts-expect-error - fix me
+              value={
+                formattedValue ??
+                (op === 'oneOf' || op === 'notOneOf' ? [] : '')
+              }
+              // @ts-expect-error - fix me
+              multi={op === 'oneOf' || op === 'notOneOf'}
+              op={op}
+              options={subfieldToOptions(field, subfield)}
+              style={{ marginTop: 10 }}
+              // oxlint-disable-next-line typescript/no-explicit-any
+              onChange={(v: any) => {
+                dispatch({ type: 'set-value', value: v });
+              }}
+            />
+          )}
 
         {field === 'payee' && isPayeeIdOp(op) && (
           <PayeeFilter
@@ -466,8 +474,42 @@ export function FilterButton<T extends RuleConditionEntity>({
       const field = titleFirst(mapField(cond.field));
       alert(field + ': ' + getFieldError(error.conditionErrors[0]));
     } else {
+      let conditionToApply = saved ? saved : cond;
+
+      if (
+        cond.field === 'flag' &&
+        'value' in cond &&
+        typeof cond.value === 'string' &&
+        (cond.op === 'is' || cond.op === 'isNot')
+      ) {
+        const normalizedValue =
+          cond.value.startsWith(':') && cond.value.endsWith(':')
+            ? cond.value
+            : nativeToShortcode(cond.value);
+
+        const isDuplicate = filters.some(f =>
+          f.conditions?.some(
+            condition =>
+              condition.field === 'flag' &&
+              condition.op === cond.op &&
+              'value' in condition &&
+              typeof condition.value === 'string' &&
+              (condition.value.startsWith(':') && condition.value.endsWith(':')
+                ? condition.value
+                : nativeToShortcode(condition.value)) === normalizedValue,
+          ),
+        );
+
+        if (isDuplicate) {
+          dispatch({ type: 'close' });
+          return;
+        }
+
+        conditionToApply = { ...cond, value: normalizedValue };
+      }
+
       // @ts-expect-error - fix me
-      onApply(saved ? saved : cond);
+      onApply(conditionToApply);
       dispatch({ type: 'close' });
     }
   }

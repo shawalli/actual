@@ -29,6 +29,7 @@ export type FieldValueTypes = {
   parent: boolean;
   cleared: boolean;
   reconciled: boolean;
+  flag: string;
 };
 
 type BaseConditionEntity<
@@ -122,7 +123,8 @@ export type RuleConditionEntity =
   | BaseConditionEntity<'saved', 'is'>
   | BaseConditionEntity<'cleared', 'is'>
   | BaseConditionEntity<'reconciled', 'is'>
-  | BaseConditionEntity<'transfer', 'is'>;
+  | BaseConditionEntity<'transfer', 'is'>
+  | BaseConditionEntity<'flag', 'is' | 'isNot' | 'isSet' | 'isNotSet'>;
 
 export type RuleActionEntity =
   | SetRuleActionEntity

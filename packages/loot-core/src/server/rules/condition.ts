@@ -320,6 +320,10 @@ export class Condition {
 
       case 'isNot':
         return fieldValue !== this.value;
+      case 'isSet':
+        return fieldValue != null && fieldValue !== '';
+      case 'isNotSet':
+        return fieldValue == null || fieldValue === '';
       case 'isbetween': {
         // The parsing logic already checks that the value is of the
         // right type (only numbers with high and low)

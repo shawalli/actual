@@ -208,6 +208,35 @@ export class AccountPage {
   }
 
   /**
+   * Filter transactions by flag with the given operator and optional value.
+   * @param op - 'is' | 'isNot' | 'isSet' | 'isNotSet'
+   * @param value - Flag shortcode (e.g. ':red_circle:') required for 'is'/'isNot'
+   */
+  async filterByFlag(
+    op: 'is' | 'isNot' | 'isSet' | 'isNotSet',
+    value?: string,
+  ) {
+    const filterTooltip = await this.filterBy('Flag');
+
+    if (op !== 'is') {
+      const opLabels: Record<string, string> = {
+        isNot: 'is not',
+        isSet: 'is set',
+        isNotSet: 'is not set',
+      };
+      await filterTooltip.locator
+        .getByRole('button', { name: opLabels[op], exact: true })
+        .click();
+    }
+
+    if (value && (op === 'is' || op === 'isNot')) {
+      await this.page.keyboard.type(value);
+    }
+
+    await filterTooltip.applyButton.click();
+  }
+
+  /**
    * Remove the nth filter
    */
   async removeFilter(idx: number) {

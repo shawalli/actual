@@ -456,9 +456,9 @@ function compileLiteral(value) {
   } else if (value instanceof Date) {
     return typed(nativeDateToInt(value), 'date', { literal: true });
   } else if (typeof value === 'string') {
-    // Allow user to escape $, and quote the string to make it a
+    // Allow user to escape $ and :, and quote the string to make it a
     // string literal in the output
-    value = value.replace(/\\\$/g, '$');
+    value = value.replace(/\\\$/g, '$').replace(/\\:/g, ':');
     return typed(value, 'string', { literal: true });
   } else if (typeof value === 'boolean') {
     return typed(value ? 1 : 0, 'boolean', { literal: true });
@@ -488,8 +488,8 @@ const compileExpr = saveStack('expr', (state, expr) => {
       return transformField(state, fieldRef);
     }
 
-    // Named parameter
-    if (expr[0] === ':') {
+    // Named parameter (but not if it starts with escaped colon like \:100\:)
+    if (expr[0] === ':' && expr[1] !== '\\') {
       const param = { value: '?', type: 'param', paramName: expr.slice(1) };
       state.namedParameters.push(param);
       return param;

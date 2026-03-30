@@ -18,6 +18,8 @@ export function assert(test: unknown, type: string, msg: string): asserts test {
 const OP_SCORES: Record<RuleConditionEntity['op'], number> = {
   is: 10,
   isNot: 10,
+  isSet: 10,
+  isNotSet: 10,
   oneOf: 9,
   notOneOf: 9,
   isapprox: 5,

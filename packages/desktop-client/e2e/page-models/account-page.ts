@@ -156,7 +156,7 @@ export class AccountPage {
 
   /**
    * Bulk-set a flag on the currently selected transactions.
-   * Shortcode format, e.g. ':red_circle:'
+   * Shortcode format, e.g. ':large_blue_circle:'
    */
   async bulkSetFlag(shortcode: string) {
     await this.clickSelectAction('Flag');
@@ -210,7 +210,7 @@ export class AccountPage {
   /**
    * Filter transactions by flag with the given operator and optional value.
    * @param op - 'is' | 'isNot' | 'isSet' | 'isNotSet'
-   * @param value - Flag shortcode (e.g. ':red_circle:') required for 'is'/'isNot'
+   * @param value - Flag shortcode (e.g. ':large_blue_circle:') required for 'is'/'isNot'
    */
   async filterByFlag(
     op: 'is' | 'isNot' | 'isSet' | 'isNotSet',

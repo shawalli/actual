@@ -101,6 +101,10 @@ export const CONDITION_TYPES = {
     ],
     nullable: true,
     parse(op, value, fieldName) {
+      if (op === 'isSet' || op === 'isNotSet') {
+        return null;
+      }
+
       if (op === 'oneOf' || op === 'notOneOf') {
         assert(
           Array.isArray(value),

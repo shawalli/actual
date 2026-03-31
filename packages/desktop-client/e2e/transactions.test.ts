@@ -186,6 +186,102 @@ test.describe('Transactions', () => {
 
       await expect(page).toMatchThemeScreenshots();
     });
+
+    test.describe('by flag', () => {
+      test('shows no transactions when isSet filter applied to unflagged account', async () => {
+        await accountPage.filterByFlag('isSet');
+        await expect(accountPage.transactionTable).toHaveText(
+          'No transactions',
+        );
+      });
+
+      test('filters by flag isSet', async () => {
+        await accountPage.createSingleTransaction({
+          payee: 'Flag Filter Test',
+          debit: '10.00',
+          flag: ':large_blue_circle:',
+        });
+
+        await accountPage.filterByFlag('isSet');
+
+        await expect(accountPage.transactionTableRow).toHaveCount(1);
+        await expect(accountPage.getNthTransaction(0).payee).toHaveText(
+          'Flag Filter Test',
+        );
+        await expect(accountPage.getNthTransaction(0).flag).toContainText('🔵');
+      });
+
+      test('filters by flag isNotSet', async () => {
+        await accountPage.createSingleTransaction({
+          payee: 'Flagged Payee',
+          debit: '10.00',
+          flag: ':large_blue_circle:',
+        });
+        await accountPage.createSingleTransaction({
+          payee: 'Unflagged Payee',
+          debit: '5.00',
+        });
+
+        await accountPage.filterByFlag('isNotSet');
+
+        await expect(
+          accountPage.transactionTableRow.filter({ hasText: 'Flagged Payee' }),
+        ).toHaveCount(0);
+        await expect(
+          accountPage.transactionTableRow.filter({
+            hasText: 'Unflagged Payee',
+          }),
+        ).not.toHaveCount(0);
+      });
+
+      test('filters by flag is :large_blue_circle:', async () => {
+        await accountPage.createSingleTransaction({
+          payee: 'Blue Flagged',
+          debit: '10.00',
+          flag: ':large_blue_circle:',
+        });
+        await accountPage.createSingleTransaction({
+          payee: 'Orange Flagged',
+          debit: '20.00',
+          flag: ':orange_circle:',
+        });
+        await accountPage.createSingleTransaction({
+          payee: 'No Flag',
+          debit: '30.00',
+        });
+
+        await accountPage.filterByFlag('is', ':large_blue_circle:');
+
+        await expect(accountPage.transactionTableRow).toHaveCount(1);
+        await expect(accountPage.getNthTransaction(0).payee).toHaveText(
+          'Blue Flagged',
+        );
+      });
+
+      test('filters by flag isNot :large_blue_circle:', async () => {
+        await accountPage.createSingleTransaction({
+          payee: 'Blue Flagged 2',
+          debit: '10.00',
+          flag: ':large_blue_circle:',
+        });
+        await accountPage.createSingleTransaction({
+          payee: 'Orange Flagged 2',
+          debit: '20.00',
+          flag: ':orange_circle:',
+        });
+
+        await accountPage.filterByFlag('isNot', ':large_blue_circle:');
+
+        await expect(
+          accountPage.transactionTableRow.filter({ hasText: 'Blue Flagged 2' }),
+        ).toHaveCount(0);
+        await expect(
+          accountPage.transactionTableRow.filter({
+            hasText: 'Orange Flagged 2',
+          }),
+        ).not.toHaveCount(0);
+      });
+    });
   });
 
   test('creates a test transaction', async () => {
@@ -282,7 +378,7 @@ test.describe('Transactions', () => {
       notes: 'Notes field',
       category: 'Food',
       debit: '12.34',
-      flag: ':red_circle:',
+      flag: ':large_blue_circle:',
     });
     const transaction = accountPage.getNthTransaction(0);
     await expect(transaction.payee).toHaveText('Home Depot');
@@ -290,7 +386,7 @@ test.describe('Transactions', () => {
     await expect(transaction.category).toHaveText('Food');
     await expect(transaction.debit).toHaveText('12.34');
     await expect(transaction.credit).toHaveText('');
-    await expect(transaction.flag).toContainText('🔴');
+    await expect(transaction.flag).toContainText('🔵');
     await expect(transaction.flag.locator('svg')).toHaveCount(0);
     await expect(page).toMatchThemeScreenshots();
   });
@@ -301,7 +397,7 @@ test.describe('Transactions', () => {
       notes: 'Test notes',
       category: 'Food',
       debit: '50.00',
-      flag: ':red_circle:',
+      flag: ':large_blue_circle:',
     });
 
     await accountPage.accountMenuButton.click();
@@ -318,7 +414,7 @@ test.describe('Transactions', () => {
     try {
       const csvContent = await fs.readFile(path, 'utf-8');
       expect(csvContent).toContain('Flag');
-      expect(csvContent).toContain(':red_circle:');
+      expect(csvContent).toContain(':large_blue_circle:');
     } finally {
       await fs.unlink(path);
     }
@@ -333,9 +429,9 @@ test.describe('Transactions', () => {
       });
 
       await accountPage.selectNthTransaction(0);
-      await accountPage.bulkSetFlag(':red_circle:');
+      await accountPage.bulkSetFlag(':large_blue_circle:');
 
-      await expect(accountPage.getNthTransaction(0).flag).toContainText('🔴');
+      await expect(accountPage.getNthTransaction(0).flag).toContainText('🔵');
     });
 
     test('sets a flag on multiple selected transactions', async () => {
@@ -350,10 +446,10 @@ test.describe('Transactions', () => {
 
       await accountPage.selectNthTransaction(0);
       await accountPage.selectNthTransaction(1);
-      await accountPage.bulkSetFlag(':red_circle:');
+      await accountPage.bulkSetFlag(':large_blue_circle:');
 
-      await expect(accountPage.getNthTransaction(0).flag).toContainText('🔴');
-      await expect(accountPage.getNthTransaction(1).flag).toContainText('🔴');
+      await expect(accountPage.getNthTransaction(0).flag).toContainText('🔵');
+      await expect(accountPage.getNthTransaction(1).flag).toContainText('🔵');
     });
 
     test('overwrites an existing flag on selected transactions', async () => {
@@ -361,7 +457,7 @@ test.describe('Transactions', () => {
       await accountPage.createSingleTransaction({
         payee: 'Home Depot',
         debit: '10.00',
-        flag: ':red_circle:',
+        flag: ':large_blue_circle:',
       });
       await accountPage.createSingleTransaction({
         payee: 'Kroger',
@@ -380,7 +476,7 @@ test.describe('Transactions', () => {
       await accountPage.createSingleTransaction({
         payee: 'Home Depot',
         debit: '10.00',
-        flag: ':red_circle:',
+        flag: ':large_blue_circle:',
       });
 
       await accountPage.selectNthTransaction(0);
@@ -388,7 +484,7 @@ test.describe('Transactions', () => {
 
       // After clearing, the flag cell should not contain an emoji
       await expect(accountPage.getNthTransaction(0).flag).not.toContainText(
-        '🔴',
+        '🔵',
       );
     });
   });

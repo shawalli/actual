@@ -523,6 +523,100 @@ describe('Transaction rules', () => {
       },
     ]);
   });
+
+  describe('flag filtering', () => {
+    describe('conditionsToAQL', () => {
+      test('flag "is" with shortcode produces escaped $eq query', () => {
+        const { filters } = conditionsToAQL([
+          { field: 'flag', op: 'is', value: ':large_blue_circle:' },
+        ]);
+        expect(filters).toStrictEqual([
+          { flag: { $eq: '\\:large_blue_circle\\:' } },
+        ]);
+      });
+
+      test('flag "isNot" with shortcode produces escaped $ne query', () => {
+        const { filters } = conditionsToAQL([
+          { field: 'flag', op: 'isNot', value: ':orange_circle:' },
+        ]);
+        expect(filters).toStrictEqual([
+          { flag: { $ne: '\\:orange_circle\\:' } },
+        ]);
+      });
+
+      test('flag "isSet" produces $and [ne null, ne empty] query', () => {
+        const { filters } = conditionsToAQL([
+          { field: 'flag', op: 'isSet', value: null },
+        ]);
+        expect(filters).toStrictEqual([
+          { $and: [{ flag: { $ne: null } }, { flag: { $ne: '' } }] },
+        ]);
+      });
+
+      test('flag "isNotSet" produces $or [null, empty] query', () => {
+        const { filters } = conditionsToAQL([
+          { field: 'flag', op: 'isNotSet', value: null },
+        ]);
+        expect(filters).toStrictEqual([
+          { $or: [{ flag: null }, { flag: '' }] },
+        ]);
+      });
+    });
+
+    test('transactions can be queried by flag', async () => {
+      await loadRules();
+      const account = await db.insertAccount({ name: 'flag-test-bank' });
+
+      await db.insertTransaction({
+        id: 'f1',
+        date: '2024-01-01',
+        account,
+        amount: 100,
+        flag: ':large_blue_circle:',
+      });
+      await db.insertTransaction({
+        id: 'f2',
+        date: '2024-01-02',
+        account,
+        amount: 200,
+        flag: ':orange_circle:',
+      });
+      await db.insertTransaction({
+        id: 'f3',
+        date: '2024-01-03',
+        account,
+        amount: 300,
+        flag: null,
+      });
+      await db.insertTransaction({
+        id: 'f4',
+        date: '2024-01-04',
+        account,
+        amount: 400,
+        flag: '',
+      });
+
+      let transactions = await getMatchingTransactions([
+        { field: 'flag', op: 'isSet', value: null },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['f2', 'f1']);
+
+      transactions = await getMatchingTransactions([
+        { field: 'flag', op: 'isNotSet', value: null },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['f4', 'f3']);
+
+      transactions = await getMatchingTransactions([
+        { field: 'flag', op: 'is', value: ':large_blue_circle:' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['f1']);
+
+      transactions = await getMatchingTransactions([
+        { field: 'flag', op: 'isNot', value: ':large_blue_circle:' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['f4', 'f3', 'f2']);
+    });
+  });
 });
 
 describe('Learning categories', () => {

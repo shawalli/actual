@@ -102,8 +102,9 @@ export function FilterExpression<T extends RuleConditionEntity>({
                 <>
                   {field === 'flag' &&
                   (op === 'is' || op === 'isNot') &&
-                  value ? (
-                    <span title={String(value)}>
+                  value &&
+                  typeof value === 'string' ? (
+                    <span title={value}>
                       {value.startsWith(':') && value.endsWith(':')
                         ? shortcodeToNative(value)
                         : value}

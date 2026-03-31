@@ -2,6 +2,26 @@
   <img src="/demo.png" alt="Actualbudget" />
 </p>
 
+🚨🚨🚨 **READ THIS FIRST** 🚨🚨🚨
+
+## This Project
+
+### Why did you fork actualbudget/actual?
+
+This project is a soft fork of actualbudget/actual ("the root project"). It contains all of the features and functionality of the root project, as well as additional contributions of mine that were not approved for the root project. Right now, the main feature this repo has is transaction flags.
+
+### Unique Features
+
+- Transaction flags - short-lived flags that can further organize and isolate transactions. Useful for things like balancing a budget, finding a missing transaction, managing submissions for reimbursements to your company, healthcare savings account, etc. Transaction flags will be first class transaction fields, with support for bulk-editing, filtering, and rules/schedules.
+
+### Versioning
+
+This project attempts to be everything in the root project and then additional features. In terms of versioning, I adhere to the versions published in the root project. That is to say, if the root project releases 2.12.0, this project will merge all commits from its `master` branch into `fork/master` and tag this project with 2.12.0.0. If any changes are made in this project, the fourth number increments, e.g. 2.12.0.1. This follows for patch, minor, and major versions.
+
+As this fork is borne out of wanting a particular featureset, and not to disrupt or usurp the root project, I will "sync" it with the root project sporadically as needed. At this time, I do not intend to match every single release in the root project.
+
+-----------------
+
 ## Getting Started
 
 Actual is a local-first personal finance tool. It is 100% free and open-source, written in NodeJS, it has a synchronization element so that all your changes can move between devices without any heavy lifting.

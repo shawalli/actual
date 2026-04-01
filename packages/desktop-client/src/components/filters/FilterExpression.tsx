@@ -7,8 +7,10 @@ import { SvgDelete } from '@actual-app/components/icons/v0';
 import { Popover } from '@actual-app/components/popover';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
+import { Tooltip } from '@actual-app/components/tooltip';
 import { View } from '@actual-app/components/view';
 
+import { shortcodeToNative } from 'loot-core/shared/emoji';
 import { friendlyOp, mapField } from 'loot-core/shared/rules';
 import type { RuleConditionEntity } from 'loot-core/types/models';
 
@@ -64,8 +66,6 @@ export function FilterExpression<T extends RuleConditionEntity>({
         isDisabled={customName != null}
         onPress={() => setEditing(true)}
         style={{
-          maxWidth: 'calc(100% - 26px)',
-          whiteSpace: 'nowrap',
           display: 'block',
         }}
       >
@@ -76,6 +76,7 @@ export function FilterExpression<T extends RuleConditionEntity>({
             paddingRight: 2,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {customName ? (
@@ -85,19 +86,43 @@ export function FilterExpression<T extends RuleConditionEntity>({
               <Text style={{ color: theme.pageTextPositive }}>
                 {mapField(field, options)}
               </Text>{' '}
-              <Text>{friendlyOp(op, null)}</Text>{' '}
-              {!['onbudget', 'offbudget'].includes(op?.toLocaleLowerCase()) && (
-                <Value
-                  value={value}
-                  field={field}
-                  inline
-                  valueIsRaw={
-                    op === 'contains' ||
-                    op === 'matches' ||
-                    op === 'doesNotContain' ||
-                    op === 'hasTags'
-                  }
-                />
+              {op === 'isSet' || op === 'isNotSet' ? (
+                <>
+                  <Text>is </Text>
+                  <Text style={{ color: theme.pageTextPositive }}>
+                    {op === 'isSet' ? 'set' : 'not set'}
+                  </Text>
+                </>
+              ) : (
+                <Text>{friendlyOp(op, null)}</Text>
+              )}{' '}
+              {!['onbudget', 'offbudget', 'isset', 'isnotset'].includes(
+                op?.toLocaleLowerCase(),
+              ) && (
+                <>
+                  {field === 'flag' &&
+                  (op === 'is' || op === 'isNot') &&
+                  value &&
+                  typeof value === 'string' ? (
+                    <span title={value}>
+                      {value.startsWith(':') && value.endsWith(':')
+                        ? shortcodeToNative(value)
+                        : value}
+                    </span>
+                  ) : (
+                    <Value
+                      value={value}
+                      field={field}
+                      inline
+                      valueIsRaw={
+                        op === 'contains' ||
+                        op === 'matches' ||
+                        op === 'doesNotContain' ||
+                        op === 'hasTags'
+                      }
+                    />
+                  )}
+                </>
               )}
             </>
           )}

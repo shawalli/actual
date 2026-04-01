@@ -1,6 +1,7 @@
 // @ts-strict-ignore
 
 import { logger } from '../../platform/server/log';
+import { nativeToShortcode } from '../../shared/emoji';
 import {
   addDays,
   currentDay,
@@ -559,10 +560,34 @@ export function conditionsToAQL(
               $or: [apply(field, '$eq', null), apply(field, '$eq', '')],
             };
           }
+          if (field === 'flag' && typeof value === 'string') {
+            let queryValue = value;
+            if (!value.startsWith(':')) {
+              queryValue = nativeToShortcode(value);
+            }
+            const escapedValue = queryValue.replace(/:/g, '\\:');
+            return { [field]: { $eq: escapedValue } };
+          }
         }
         return apply(field, '$eq', value);
       case 'isNot':
+        if (field === 'flag' && typeof value === 'string') {
+          let queryValue = value;
+          if (!value.startsWith(':')) {
+            queryValue = nativeToShortcode(value);
+          }
+          const escapedValue = queryValue.replace(/:/g, '\\:');
+          return { [field]: { $ne: escapedValue } };
+        }
         return apply(field, '$ne', value);
+      case 'isSet':
+        return {
+          $and: [{ [field]: { $ne: null } }, { [field]: { $ne: '' } }],
+        };
+      case 'isNotSet':
+        return {
+          $or: [{ [field]: null }, { [field]: '' }],
+        };
 
       case 'isbetween':
         // This operator is only applicable to the specific `between`

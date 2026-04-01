@@ -7,6 +7,7 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { format as formatDate, parseISO } from 'date-fns';
 
+import { shortcodeToNative } from 'loot-core/shared/emoji';
 import { getMonthYearFormat } from 'loot-core/shared/months';
 import { getRecurringDescription } from 'loot-core/shared/schedules';
 
@@ -136,6 +137,15 @@ export function Value<T>({
           }
 
           return '…';
+        case 'flag':
+          if (value && typeof value === 'string') {
+            if (value.startsWith(':') && value.endsWith(':')) {
+              const emoji = shortcodeToNative(value);
+              return emoji || value;
+            }
+            return value;
+          }
+          return value;
         default:
           throw new Error(`Unknown field ${field}`);
       }

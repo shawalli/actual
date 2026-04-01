@@ -9,7 +9,7 @@ import { TestProviders } from '@desktop-client/mocks';
 // Mock EmojiSelect so the test focuses on the modal shell, not the picker
 vi.mock('@desktop-client/components/select/EmojiSelect', () => ({
   EmojiSelect: ({ onSelect }: { onSelect: (emoji: string | null) => void }) => (
-    <button data-testid="mock-emoji-select" onClick={() => onSelect('🔴')}>
+    <button data-testid="mock-emoji-select" onClick={() => onSelect('🔵')}>
       Select Emoji
     </button>
   ),
@@ -40,6 +40,6 @@ describe('EmojiAutocompleteModal', () => {
     renderModal();
     await userEvent.click(screen.getByTestId('mock-emoji-select'));
     expect(onSelect).toHaveBeenCalledOnce();
-    expect(onSelect).toHaveBeenCalledWith('🔴');
+    expect(onSelect).toHaveBeenCalledWith('🔵');
   });
 });

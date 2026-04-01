@@ -13,6 +13,10 @@ type EmojiMartEmoji = {
 
 let emojiCache: Map<string, string> | null = null;
 
+export function __resetEmojiCache() {
+  emojiCache = null;
+}
+
 function buildEmojiCache(): Map<string, string> {
   if (emojiCache) {
     return emojiCache;
@@ -36,7 +40,7 @@ function buildEmojiCache(): Map<string, string> {
 }
 
 /**
- * Converts an emoji shortcode (e.g., ":red_circle:") to its native emoji character.
+ * Converts an emoji shortcode (e.g., ":large_blue_circle:") to its native emoji character.
  * Returns the original string if the shortcode is not found.
  */
 export function shortcodeToNative(shortcode: string | null): string {
@@ -50,7 +54,7 @@ export function shortcodeToNative(shortcode: string | null): string {
 }
 
 /**
- * Converts a native emoji character to its shortcode (e.g., "🔴" -> ":red_circle:").
+ * Converts a native emoji character to its shortcode (e.g., "🔵" -> ":large_blue_circle:").
  * If the input is already a shortcode, returns it with colons.
  * Returns the original string if the emoji is not found.
  */
@@ -74,7 +78,7 @@ export function nativeToShortcode(emoji: string | null): string {
 }
 
 /**
- * Normalizes a flag value to shortcode format (e.g., ":red_circle:").
+ * Normalizes a flag value to shortcode format (e.g., ":large_blue_circle:").
  * If the input is already a shortcode, ensures it has colons.
  * If the input is a native emoji, converts it back to shortcode.
  *

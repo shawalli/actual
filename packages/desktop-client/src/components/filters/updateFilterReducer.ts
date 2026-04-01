@@ -39,6 +39,12 @@ export function updateFilterReducer<T extends RuleConditionEntity>(
           // @ts-expect-error - fix me
           value = [value];
         }
+      } else if (
+        (type === 'id' || type === 'string') &&
+        (action.op === 'isSet' || action.op === 'isNotSet')
+      ) {
+        // Clear value for no-value operators
+        value = null;
       }
       return { ...state, op: action.op, value };
     }

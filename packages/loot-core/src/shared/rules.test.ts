@@ -28,6 +28,22 @@ describe('rules', () => {
     it('should return true for notOneOf operation on payee field', () => {
       expect(isValidOp('payee', 'notOneOf')).toBe(true);
     });
+
+    it('should return true for is, isNot, isSet, isNotSet on flag field', () => {
+      expect(isValidOp('flag', 'is')).toBe(true);
+      expect(isValidOp('flag', 'isNot')).toBe(true);
+      expect(isValidOp('flag', 'isSet')).toBe(true);
+      expect(isValidOp('flag', 'isNotSet')).toBe(true);
+    });
+
+    it('should return false for disallowed string ops on flag field', () => {
+      expect(isValidOp('flag', 'contains')).toBe(false);
+      expect(isValidOp('flag', 'doesNotContain')).toBe(false);
+      expect(isValidOp('flag', 'matches')).toBe(false);
+      expect(isValidOp('flag', 'oneOf')).toBe(false);
+      expect(isValidOp('flag', 'notOneOf')).toBe(false);
+      expect(isValidOp('flag', 'hasTags')).toBe(false);
+    });
   });
 
   describe('getValidOps', () => {
@@ -51,6 +67,20 @@ describe('rules', () => {
       const validOps = getValidOps('payee');
       expect(validOps).toContain('oneOf');
       expect(validOps).toContain('notOneOf');
+    });
+
+    it('should include only is, isNot, isSet, isNotSet for flag field', () => {
+      const validOps = getValidOps('flag');
+      expect(validOps).toContain('is');
+      expect(validOps).toContain('isNot');
+      expect(validOps).toContain('isSet');
+      expect(validOps).toContain('isNotSet');
+      expect(validOps).not.toContain('contains');
+      expect(validOps).not.toContain('doesNotContain');
+      expect(validOps).not.toContain('matches');
+      expect(validOps).not.toContain('oneOf');
+      expect(validOps).not.toContain('notOneOf');
+      expect(validOps).not.toContain('hasTags');
     });
   });
 });

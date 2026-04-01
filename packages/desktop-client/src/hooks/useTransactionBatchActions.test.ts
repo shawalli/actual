@@ -130,7 +130,7 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     expect(modal.name).toBe('emoji-autocomplete');
 
     await act(async () => {
-      await modal.options.onSelect(':red_circle:');
+      await modal.options.onSelect(':large_blue_circle:');
     });
 
     expect(mockSend).toHaveBeenCalledWith(
@@ -142,13 +142,13 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
 
     // Parent should have the new flag
     const updatedParent = updated.find(t => t.id === 'tx-parent');
-    expect(updatedParent?.flag).toBe(':red_circle:');
+    expect(updatedParent?.flag).toBe(':large_blue_circle:');
 
     // Child may appear in updated (re-derived from parent), but must not
     // have the new flag set directly — its flag stays at its prior value
     const updatedChild = updated.find(t => t.id === 'tx-child');
     if (updatedChild) {
-      expect(updatedChild.flag).not.toBe(':red_circle:');
+      expect(updatedChild.flag).not.toBe(':large_blue_circle:');
     }
   });
 

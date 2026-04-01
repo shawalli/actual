@@ -38,6 +38,8 @@ const TYPE_INFO = {
       'doesNotContain',
       'notOneOf',
       'hasTags',
+      'isSet',
+      'isNotSet',
     ],
     nullable: true,
   },
@@ -86,6 +88,17 @@ const FIELD_INFO = {
   saved: { type: 'saved' },
   transfer: { type: 'boolean' },
   parent: { type: 'boolean' },
+  flag: {
+    type: 'string',
+    disallowedOps: new Set([
+      'contains',
+      'matches',
+      'oneOf',
+      'notOneOf',
+      'doesNotContain',
+      'hasTags',
+    ]),
+  },
 } as const satisfies FieldInfoConstraint;
 
 const fieldInfo: FieldInfoConstraint = FIELD_INFO;
@@ -165,6 +178,8 @@ export function mapField(field, opts?) {
       return t('reconciled');
     case 'transfer':
       return t('transfer');
+    case 'flag':
+      return t('Flag');
     default:
       return field;
   }
@@ -188,6 +203,10 @@ export function friendlyOp(op, type?) {
       return t('contains');
     case 'hasTags':
       return t('has tags');
+    case 'isSet':
+      return t('is set');
+    case 'isNotSet':
+      return t('is not set');
     case 'matches':
       return t('matches');
     case 'doesNotContain':

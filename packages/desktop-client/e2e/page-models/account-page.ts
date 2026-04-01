@@ -156,7 +156,7 @@ export class AccountPage {
 
   /**
    * Bulk-set a flag on the currently selected transactions.
-   * Shortcode format, e.g. ':red_circle:'
+   * Shortcode format, e.g. ':large_blue_circle:'
    */
   async bulkSetFlag(shortcode: string) {
     await this.clickSelectAction('Flag');
@@ -204,6 +204,35 @@ export class AccountPage {
   async filterByNote(note: string) {
     const filterTooltip = await this.filterBy('Note');
     await this.page.keyboard.type(note);
+    await filterTooltip.applyButton.click();
+  }
+
+  /**
+   * Filter transactions by flag with the given operator and optional value.
+   * @param op - 'is' | 'isNot' | 'isSet' | 'isNotSet'
+   * @param value - Flag shortcode (e.g. ':large_blue_circle:') required for 'is'/'isNot'
+   */
+  async filterByFlag(
+    op: 'is' | 'isNot' | 'isSet' | 'isNotSet',
+    value?: string,
+  ) {
+    const filterTooltip = await this.filterBy('Flag');
+
+    if (op !== 'is') {
+      const opLabels: Record<string, string> = {
+        isNot: 'is not',
+        isSet: 'is set',
+        isNotSet: 'is not set',
+      };
+      await filterTooltip.locator
+        .getByRole('button', { name: opLabels[op], exact: true })
+        .click();
+    }
+
+    if (value && (op === 'is' || op === 'isNot')) {
+      await this.page.keyboard.type(value);
+    }
+
     await filterTooltip.applyButton.click();
   }
 

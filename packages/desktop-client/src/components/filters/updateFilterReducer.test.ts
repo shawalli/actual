@@ -147,5 +147,69 @@ describe('updateFilterReducer', () => {
       expect(result.op).toBe('contains');
       expect(result.value).toBe('category-id-123');
     });
+
+    it('should clear value to null when switching to "isSet" on flag field', () => {
+      const state = {
+        field: 'flag' as const,
+        op: 'is' as const,
+        value: ':large_blue_circle:',
+      };
+
+      const result = updateFilterReducer(state, {
+        type: 'set-op',
+        op: 'isSet',
+      });
+
+      expect(result.op).toBe('isSet');
+      expect(result.value).toBe(null);
+    });
+
+    it('should clear value to null when switching to "isNotSet" on flag field', () => {
+      const state = {
+        field: 'flag' as const,
+        op: 'is' as const,
+        value: ':large_blue_circle:',
+      };
+
+      const result = updateFilterReducer(state, {
+        type: 'set-op',
+        op: 'isNotSet',
+      });
+
+      expect(result.op).toBe('isNotSet');
+      expect(result.value).toBe(null);
+    });
+
+    it('should keep null value when switching from "isSet" to "is" on flag field', () => {
+      const state = {
+        field: 'flag' as const,
+        op: 'isSet' as const,
+        value: null,
+      };
+
+      const result = updateFilterReducer(state, {
+        type: 'set-op',
+        op: 'is',
+      });
+
+      expect(result.op).toBe('is');
+      expect(result.value).toBe(null);
+    });
+
+    it('should keep null value when switching from "isNotSet" to "isNot" on flag field', () => {
+      const state = {
+        field: 'flag' as const,
+        op: 'isNotSet' as const,
+        value: null,
+      };
+
+      const result = updateFilterReducer(state, {
+        type: 'set-op',
+        op: 'isNot',
+      });
+
+      expect(result.op).toBe('isNot');
+      expect(result.value).toBe(null);
+    });
   });
 });

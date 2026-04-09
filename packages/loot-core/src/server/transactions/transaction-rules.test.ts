@@ -617,6 +617,173 @@ describe('Transaction rules', () => {
       expect(transactions.map(t => t.id)).toEqual(['f4', 'f3', 'f2']);
     });
   });
+
+  describe('tag filtering', () => {
+    describe('conditionsToAQL', () => {
+      test('hasTags with @ mention produces sigil-specific regex', () => {
+        const { filters } = conditionsToAQL([
+          { field: 'notes', op: 'hasTags', value: '@alice' },
+        ]);
+        expect(filters[0].$and).toHaveLength(1);
+        const regexp = filters[0].$and[0].notes.$regexp;
+        expect(regexp).toMatch(/@alice/);
+        expect(regexp).not.toMatch(/#alice/);
+      });
+
+      test('hasTags with # tag produces sigil-specific regex', () => {
+        const { filters } = conditionsToAQL([
+          { field: 'notes', op: 'hasTags', value: '#budget' },
+        ]);
+        expect(filters[0].$and).toHaveLength(1);
+        const regexp = filters[0].$and[0].notes.$regexp;
+        expect(regexp).toMatch(/#budget/);
+        expect(regexp).not.toMatch(/@budget/);
+      });
+
+      test('hasTags with mixed sigils produces multiple filters', () => {
+        const { filters } = conditionsToAQL([
+          { field: 'notes', op: 'hasTags', value: '@alice #2025' },
+        ]);
+        expect(filters[0].$and).toHaveLength(2);
+        const aliceRegexp = filters[0].$and[0].notes.$regexp;
+        const budgetRegexp = filters[0].$and[1].notes.$regexp;
+        expect(aliceRegexp).toMatch(/@alice/);
+        expect(budgetRegexp).toMatch(/#2025/);
+      });
+
+      test('hasTags deduplicates tags with same sigil and name', () => {
+        const { filters } = conditionsToAQL([
+          { field: 'notes', op: 'hasTags', value: '@alice @alice #budget' },
+        ]);
+        // Should have 2 filters: one for @alice, one for #budget (duplicate @alice removed)
+        expect(filters[0].$and).toHaveLength(2);
+      });
+    });
+
+    test('transactions can be filtered by person tags', async () => {
+      await loadRules();
+      const account = await db.insertAccount({ name: 'tag-test-bank' });
+
+      await db.insertTransaction({
+        id: 't1',
+        date: '2024-01-01',
+        account,
+        amount: 100,
+        notes: '@alice assigned',
+      });
+      await db.insertTransaction({
+        id: 't2',
+        date: '2024-01-02',
+        account,
+        amount: 200,
+        notes: '#alice assigned',
+      });
+      await db.insertTransaction({
+        id: 't3',
+        date: '2024-01-03',
+        account,
+        amount: 300,
+        notes: '@bob assigned',
+      });
+
+      // Filter for @alice should only match t1
+      let transactions = await getMatchingTransactions([
+        { field: 'notes', op: 'hasTags', value: '@alice' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['t1']);
+
+      // Filter for #alice should only match t2
+      transactions = await getMatchingTransactions([
+        { field: 'notes', op: 'hasTags', value: '#alice' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['t2']);
+
+      // Filter for @bob should only match t3
+      transactions = await getMatchingTransactions([
+        { field: 'notes', op: 'hasTags', value: '@bob' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['t3']);
+    });
+
+    test('transactions can be filtered by multiple person tags', async () => {
+      await loadRules();
+      const account = await db.insertAccount({ name: 'multi-tag-bank' });
+
+      await db.insertTransaction({
+        id: 't1',
+        date: '2024-01-01',
+        account,
+        amount: 100,
+        notes: '@alice #2025 gift',
+      });
+      await db.insertTransaction({
+        id: 't2',
+        date: '2024-01-02',
+        account,
+        amount: 200,
+        notes: '@alice #2026 bonus',
+      });
+      await db.insertTransaction({
+        id: 't3',
+        date: '2024-01-03',
+        account,
+        amount: 300,
+        notes: '@bob #2025 reimbursement',
+      });
+
+      // Filter for @alice AND #2025 should only match t1
+      let transactions = await getMatchingTransactions([
+        { field: 'notes', op: 'hasTags', value: '@alice #2025' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['t1']);
+
+      // Filter for @alice should match both t1 and t2
+      transactions = await getMatchingTransactions([
+        { field: 'notes', op: 'hasTags', value: '@alice' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['t2', 't1']);
+
+      // Filter for #2025 should match t1 and t3
+      transactions = await getMatchingTransactions([
+        { field: 'notes', op: 'hasTags', value: '#2025' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['t3', 't1']);
+    });
+
+    test('@name and #name are distinct and do not cross-match', async () => {
+      await loadRules();
+      const account = await db.insertAccount({ name: 'distinct-tags' });
+
+      await db.insertTransaction({
+        id: 't1',
+        date: '2024-01-01',
+        account,
+        amount: 100,
+        notes: '@fred gift',
+      });
+      await db.insertTransaction({
+        id: 't2',
+        date: '2024-01-02',
+        account,
+        amount: 200,
+        notes: '#fred budget',
+      });
+
+      // @fred should only match t1
+      let transactions = await getMatchingTransactions([
+        { field: 'notes', op: 'hasTags', value: '@fred' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['t1']);
+      expect(transactions.length).toBe(1);
+
+      // #fred should only match t2
+      transactions = await getMatchingTransactions([
+        { field: 'notes', op: 'hasTags', value: '#fred' },
+      ]);
+      expect(transactions.map(t => t.id)).toEqual(['t2']);
+      expect(transactions.length).toBe(1);
+    });
+  });
 });
 
 describe('Learning categories', () => {

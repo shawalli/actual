@@ -109,6 +109,84 @@ describe('linkParser', () => {
       });
     });
 
+    describe('person tag parsing', () => {
+      it('should parse single @ mention', () => {
+        const result = parseNotes('@alice');
+        const personSegment = result.find(s => s.type === 'person');
+        expect(personSegment).toEqual({
+          type: 'person',
+          content: '@alice',
+          tag: 'alice',
+        });
+      });
+
+      it('should parse multiple @ mentions in same note', () => {
+        const result = parseNotes('@alice @bob');
+        const personSegments = result.filter(s => s.type === 'person');
+        expect(personSegments).toHaveLength(2);
+        expect(personSegments[0]).toEqual({
+          type: 'person',
+          content: '@alice',
+          tag: 'alice',
+        });
+        expect(personSegments[1]).toEqual({
+          type: 'person',
+          content: '@bob',
+          tag: 'bob',
+        });
+      });
+
+      it('should parse @mention mixed with hashtags', () => {
+        const result = parseNotes('@alice #2025 @bob #budget');
+        const personSegments = result.filter(s => s.type === 'person');
+        const tagSegments = result.filter(s => s.type === 'tag');
+        expect(personSegments).toHaveLength(2);
+        expect(tagSegments).toHaveLength(2);
+        expect(personSegments[0].tag).toBe('alice');
+        expect(tagSegments[0].tag).toBe('2025');
+        expect(personSegments[1].tag).toBe('bob');
+        expect(tagSegments[1].tag).toBe('budget');
+      });
+
+      it('should handle @@ as escape sequence (plain text)', () => {
+        const result = parseNotes('@@escape');
+        const personSegments = result.filter(s => s.type === 'person');
+        expect(personSegments).toHaveLength(0);
+        // Should be plain text
+        const textSegment = result.find(
+          s => s.type === 'text' && s.content.includes('escape'),
+        );
+        expect(textSegment).toBeDefined();
+      });
+
+      it('should parse @mention with surrounding text', () => {
+        const result = parseNotes('Please contact @alice for details');
+        const personSegment = result.find(s => s.type === 'person');
+        expect(personSegment).toEqual({
+          type: 'person',
+          content: '@alice',
+          tag: 'alice',
+        });
+      });
+
+      it('should parse @mention at end of note', () => {
+        const result = parseNotes('Assigned to @alice');
+        const personSegment = result.find(s => s.type === 'person');
+        expect(personSegment).toEqual({
+          type: 'person',
+          content: '@alice',
+          tag: 'alice',
+        });
+      });
+
+      it('should preserve whitespace around @mentions', () => {
+        const result = parseNotes('@alice @bob');
+        const textSegments = result.filter(s => s.type === 'text');
+        const spaceSegment = textSegments.find(s => s.content === ' ');
+        expect(spaceSegment).toBeDefined();
+      });
+    });
+
     describe('file path detection', () => {
       describe('Unix paths', () => {
         it('should detect multi-segment absolute paths', () => {

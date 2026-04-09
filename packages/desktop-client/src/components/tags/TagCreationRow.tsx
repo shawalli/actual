@@ -65,6 +65,8 @@ export const TagCreationRow = ({ onClose, tags }: TagCreationRowProps) => {
     );
   };
 
+  const isPerson = tag.startsWith('@');
+
   const { mutate: createTag } = useCreateTagMutation();
 
   const onAddTag = () => {
@@ -170,9 +172,9 @@ export const TagCreationRow = ({ onClose, tags }: TagCreationRowProps) => {
           <Button
             ref={colorButtonRef}
             variant="bare"
-            className={getTagCSS('', { color })}
+            className={getTagCSS('', { color, isPerson })}
           >
-            #{tag}
+            {isPerson ? tag : `#${tag}`}
           </Button>
         </ColorPicker>
         <SpaceBetween

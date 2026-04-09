@@ -17,7 +17,8 @@ export const TagEditor = ({ tag, ref }: TagEditorProps) => {
   const getTagCSS = useTagCSS();
   const { mutate: updateTag } = useUpdateTagMutation();
 
-  const formattedTag = <>#{tag.tag}</>;
+  const isPerson = tag.tag.startsWith('@');
+  const formattedTag = isPerson ? <>{tag.tag}</> : <>#{tag.tag}</>;
 
   return (
     <ColorPicker
@@ -26,7 +27,11 @@ export const TagEditor = ({ tag, ref }: TagEditorProps) => {
         updateTag({ tag: { ...tag, color: color.toString('hex') } });
       }}
     >
-      <Button variant="bare" className={getTagCSS(tag.tag)} ref={ref}>
+      <Button
+        variant="bare"
+        className={getTagCSS(tag.tag, { isPerson })}
+        ref={ref}
+      >
         {formattedTag}
       </Button>
     </ColorPicker>

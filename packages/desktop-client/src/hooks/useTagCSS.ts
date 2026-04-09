@@ -16,13 +16,15 @@ export function useTagCSS() {
   return useCallback(
     (
       tag: string,
-      options: { color?: string | null; compact?: boolean } = {},
+      options: { color?: string | null; compact?: boolean; isPerson?: boolean } = {},
     ) => {
-      const [color, backgroundColor, backgroundColorHovered] = getTagCSSColors(
-        theme,
-        // fallback strategy: options color > tag color > default color > theme color (undefined)
-        options.color ?? tags.find(t => t.tag === tag)?.color,
-      );
+      const [color, backgroundColor, backgroundColorHovered] = options.isPerson
+        ? getPersonTagCSSColors(theme)
+        : getTagCSSColors(
+            theme,
+            // fallback strategy: options color > tag color > default color > theme color (undefined)
+            options.color ?? tags.find(t => t.tag === tag)?.color,
+          );
 
       return css({
         display: 'inline-flex',
@@ -69,4 +71,12 @@ function getTagCSSColors(theme: Theme, color?: string | null) {
   }
 
   return ['white !important', color, `color-mix(in srgb, ${color} 70%, white)`];
+}
+
+function getPersonTagCSSColors(theme: Theme) {
+  return [
+    themeStyle.noteTagText,
+    themeStyle.notePersonTagBackground,
+    themeStyle.notePersonTagBackgroundHover,
+  ];
 }

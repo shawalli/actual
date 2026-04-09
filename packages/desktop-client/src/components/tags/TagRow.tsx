@@ -59,11 +59,13 @@ export const TagRow = memo(
     };
 
     const onShowActivity = () => {
+      const isPerson = tag.tag.startsWith('@');
+      const filterValue = isPerson ? tag.tag : `#${tag.tag}`;
       const filterConditions = [
         {
           field: 'notes',
           op: 'hasTags',
-          value: `#${tag.tag}`,
+          value: filterValue,
           type: 'string',
         },
       ];

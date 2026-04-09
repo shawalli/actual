@@ -87,6 +87,12 @@ async function discoverTags(): Promise<TagEntity[]> {
         tags.push(await createTag({ tag }));
       }
     }
+    for (const [_, person] of notes.matchAll(/(?<![@#])@([^@#\s]+)/g)) {
+      const personTag = `@${person}`;
+      if (!tags.find(t => t.tag === personTag)) {
+        tags.push(await createTag({ tag: personTag }));
+      }
+    }
   }
 
   return tags.sort(function (a, b) {

@@ -1,6 +1,7 @@
 export type ParsedSegment =
   | { type: 'text'; content: string }
   | { type: 'tag'; content: string; tag: string }
+  | { type: 'person'; content: string; tag: string }
   | {
       type: 'link';
       content: string;
@@ -93,6 +94,47 @@ function parseTagsInWord(word: string): ParsedSegment[] {
 
     const validTag = `#${tag}`;
     segments.push({ type: 'tag', content: validTag, tag });
+  });
+
+  return segments;
+}
+
+/**
+ * Parses a single word for @ mentions (people tags)
+ * Returns segments for people found in the word
+ */
+function parseAtMentionsInWord(word: string): ParsedSegment[] {
+  const segments: ParsedSegment[] = [];
+
+  if (!word.includes('@') || word.length <= 1) {
+    return [{ type: 'text', content: word }];
+  }
+
+  let lastEmptyTag = -1;
+  const parts = word.split('@');
+
+  parts.forEach((person, pi) => {
+    if (pi === 0) {
+      if (person) {
+        segments.push({ type: 'text', content: person });
+      }
+      return;
+    }
+
+    if (!person) {
+      lastEmptyTag = pi;
+      segments.push({ type: 'text', content: '@' });
+      return;
+    }
+
+    if (lastEmptyTag === pi - 1) {
+      segments.push({ type: 'text', content: `${person}` });
+      return;
+    }
+    lastEmptyTag = -1;
+
+    const validTag = `@${person}`;
+    segments.push({ type: 'person', content: validTag, tag: person });
   });
 
   return segments;
@@ -198,7 +240,7 @@ export function parseNotes(notes: string): ParsedSegment[] {
 }
 
 /**
- * Parses text that may contain hashtags and file paths
+ * Parses text that may contain hashtags, @ mentions, and file paths
  */
 function parseTextWithTags(text: string): ParsedSegment[] {
   const segments: ParsedSegment[] = [];
@@ -220,6 +262,12 @@ function parseTextWithTags(text: string): ParsedSegment[] {
         url: word,
         isFilePath: true,
       });
+      continue;
+    }
+
+    // Check for @ mentions (people tags)
+    if (word.includes('@') && word.length > 1) {
+      segments.push(...parseAtMentionsInWord(word));
       continue;
     }
 

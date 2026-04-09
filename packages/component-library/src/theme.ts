@@ -207,6 +207,8 @@ export const theme = {
   noteTagBackgroundHover: 'var(--color-noteTagBackgroundHover)',
   noteTagDefault: 'var(--color-noteTagDefault)',
   noteTagText: 'var(--color-noteTagText)',
+  notePersonTagBackground: 'var(--color-notePersonTagBackground)',
+  notePersonTagBackgroundHover: 'var(--color-notePersonTagBackgroundHover)',
   budgetOtherMonth: 'var(--color-budgetOtherMonth)',
   budgetCurrentMonth: 'var(--color-budgetCurrentMonth)',
   budgetHeaderOtherMonth: 'var(--color-budgetHeaderOtherMonth)',

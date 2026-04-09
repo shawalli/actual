@@ -10,6 +10,7 @@ type DesktopTaggedNotesProps = {
   onPress?: (content: string) => void;
   tag: string;
   separator: string;
+  isPerson?: boolean;
 };
 
 export function DesktopTaggedNotes({
@@ -17,13 +18,14 @@ export function DesktopTaggedNotes({
   onPress,
   tag,
   separator,
+  isPerson,
 }: DesktopTaggedNotesProps) {
   const getTagCSS = useTagCSS();
   return (
     <View style={{ display: 'inline' }}>
       <Button
         variant="bare"
-        className={getTagCSS(tag)}
+        className={getTagCSS(tag, { isPerson })}
         onPress={() => {
           onPress?.(content);
         }}

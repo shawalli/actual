@@ -848,8 +848,8 @@ export function findTags() {
     `
       SELECT notes
       FROM transactions
-      WHERE tombstone = 0 AND notes LIKE ?
+      WHERE tombstone = 0 AND (notes LIKE ? OR notes LIKE ?)
     `,
-    ['%#%'],
+    ['%#%', '%@%'],
   );
 }

@@ -58,6 +58,29 @@ export function NotesTagFormatter({
               />
             );
 
+          case 'person':
+            if (isNarrowWidth) {
+              return (
+                <MobileTaggedNotes
+                  key={index}
+                  content={segment.content}
+                  tag={segment.tag}
+                  separator={separator}
+                  isPerson
+                />
+              );
+            }
+            return (
+              <DesktopTaggedNotes
+                key={index}
+                onPress={onNotesTagClick}
+                content={segment.content}
+                tag={segment.tag}
+                separator={separator}
+                isPerson
+              />
+            );
+
           case 'link':
             if (isNarrowWidth) {
               return (

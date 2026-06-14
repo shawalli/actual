@@ -5,36 +5,37 @@ import { useTranslation } from 'react-i18next';
 
 import { AlignedText } from '@actual-app/components/aligned-text';
 import { theme } from '@actual-app/components/theme';
-import { css } from '@emotion/css';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-
 import type {
   balanceTypeOpType,
   DataEntity,
   LegendEntity,
   RuleConditionEntity,
-} from 'loot-core/types/models';
+} from '@actual-app/core/types/models';
+import { css } from '@emotion/css';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+
+import { FinancialText } from '#components/FinancialText';
+import { useRechartsAnimation } from '#components/reports/chart-theme';
+import { Container } from '#components/reports/Container';
+import { getCustomTick } from '#components/reports/getCustomTick';
+import { numberFormatterTooltip } from '#components/reports/numberFormatter';
+import { useAccounts } from '#hooks/useAccounts';
+import { useCategories } from '#hooks/useCategories';
+import { useFormat } from '#hooks/useFormat';
+import type { FormatType } from '#hooks/useFormat';
+import { useNavigate } from '#hooks/useNavigate';
+import { usePrivacyMode } from '#hooks/usePrivacyMode';
 
 import { showActivity } from './showActivity';
-
-import { FinancialText } from '@desktop-client/components/FinancialText';
-import { useRechartsAnimation } from '@desktop-client/components/reports/chart-theme';
-import { Container } from '@desktop-client/components/reports/Container';
-import { getCustomTick } from '@desktop-client/components/reports/getCustomTick';
-import { numberFormatterTooltip } from '@desktop-client/components/reports/numberFormatter';
-import { useAccounts } from '@desktop-client/hooks/useAccounts';
-import { useCategories } from '@desktop-client/hooks/useCategories';
-import { useFormat } from '@desktop-client/hooks/useFormat';
-import type { FormatType } from '@desktop-client/hooks/useFormat';
-import { useNavigate } from '@desktop-client/hooks/useNavigate';
-import { usePrivacyMode } from '@desktop-client/hooks/usePrivacyMode';
+import { computeTrendLines } from './util/computeTrendLines';
 
 type PayloadItem = {
   dataKey: string;
@@ -150,6 +151,7 @@ type LineGraphProps = {
   balanceTypeOp: balanceTypeOpType;
   showHiddenCategories?: boolean;
   showOffBudget?: boolean;
+  showTrendLines?: boolean;
   showTooltip?: boolean;
   interval?: string;
 };
@@ -163,6 +165,7 @@ export function LineGraph({
   balanceTypeOp,
   showHiddenCategories,
   showOffBudget,
+  showTrendLines = false,
   showTooltip = true,
   interval,
 }: LineGraphProps) {
@@ -181,6 +184,10 @@ export function LineGraph({
     .reduce((acc, cur) => (Math.abs(cur) > Math.abs(acc) ? cur : acc), 0);
 
   const leftMargin = Math.abs(largestValue) > 1000000 ? 20 : 5;
+
+  const trendLines = showTrendLines
+    ? computeTrendLines(data.intervalData, data.legend)
+    : [];
 
   const onShowActivity = (item, id, payload) => {
     showActivity({
@@ -254,6 +261,16 @@ export function LineGraph({
                   tickSize={0}
                 />
               )}
+              {trendLines.map(t => (
+                <ReferenceLine
+                  key={`trend-${t.id}`}
+                  segment={[t.start, t.end]}
+                  stroke={t.color}
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.6}
+                  ifOverflow="extendDomain"
+                />
+              ))}
               {data.legend.map((entry, index) => {
                 return (
                   <Line

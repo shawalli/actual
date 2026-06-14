@@ -1,12 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
 
-import * as monthUtils from '../shared/months';
+import * as monthUtils from '#shared/months';
 import type {
   AccountEntity,
   CategoryEntity,
   CategoryGroupEntity,
   TransactionEntity,
-} from '../types/models';
+} from '#types/models';
 
 import { random } from './random';
 
@@ -142,6 +142,7 @@ function _generateTransaction(
     flag: data.flag || null,
     sort_order: data.sort_order != null ? data.sort_order : 1,
     cleared: false,
+    reconciled: false,
     ...(data.category && { category: data.category }),
   };
 }

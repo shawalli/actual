@@ -1,4 +1,3 @@
-import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
 import { CloseAccountModal } from './close-account-modal';
@@ -28,6 +27,9 @@ export class AccountPage {
   readonly filterSelectTooltip: Locator;
   readonly selectButton: Locator;
   readonly selectTooltip: Locator;
+  readonly sidebarAllAccountsBalance: Locator;
+  readonly sidebarOnBudgetBalance: Locator;
+  readonly sidebarOffBudgetBalance: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -56,6 +58,16 @@ export class AccountPage {
 
     this.selectButton = this.page.getByTestId('transactions-select-button');
     this.selectTooltip = this.page.getByTestId('transactions-select-tooltip');
+
+    this.sidebarAllAccountsBalance = this.page.getByTestId(
+      'sidebar-all-accounts-balance',
+    );
+    this.sidebarOnBudgetBalance = this.page.getByTestId(
+      'sidebar-on-budget-balance',
+    );
+    this.sidebarOffBudgetBalance = this.page.getByTestId(
+      'sidebar-off-budget-balance',
+    );
   }
 
   async waitFor(...options: Parameters<Locator['waitFor']>) {
@@ -289,7 +301,7 @@ export class AccountPage {
     if (transaction.notes) {
       const notesCell = transactionRow.getByTestId('notes');
       await notesCell.click();
-      const notesInput = notesCell.getByRole('textbox');
+      const notesInput = notesCell.getByRole('combobox');
       await this.selectInputText(notesInput);
       await notesInput.pressSequentially(transaction.notes);
       await this.page.keyboard.press('Tab');

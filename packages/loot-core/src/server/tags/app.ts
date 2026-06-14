@@ -1,9 +1,9 @@
-import type { TagEntity } from '../../types/models';
-import { createApp } from '../app';
-import * as db from '../db';
-import { mutator } from '../mutators';
-import { batchMessages } from '../sync';
-import { undoable } from '../undo';
+import { createApp } from '#server/app';
+import * as db from '#server/db';
+import { mutator } from '#server/mutators';
+import { batchMessages } from '#server/sync';
+import { undoable } from '#server/undo';
+import type { TagEntity } from '#types/models';
 
 export type TagsHandlers = {
   'tags-get': typeof getTags;
@@ -22,8 +22,14 @@ app.method('tags-delete-all', mutator(deleteAllTags));
 app.method('tags-update', mutator(undoable(updateTag)));
 app.method('tags-discover', mutator(discoverTags));
 
+const collator = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: 'base',
+});
 async function getTags(): Promise<TagEntity[]> {
-  return await db.getTags();
+  const tags = await db.getTags();
+  tags.sort((a, b) => collator.compare(a.tag, b.tag));
+  return tags;
 }
 
 async function createTag({

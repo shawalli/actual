@@ -20,7 +20,7 @@ This project attempts to be everything in the root project and then additional f
 
 As this fork is borne out of wanting a particular featureset, and not to disrupt or usurp the root project, I will "sync" it with the root project sporadically as needed. At this time, I do not intend to match every single release in the root project.
 
------------------
+---
 
 ## Getting Started
 

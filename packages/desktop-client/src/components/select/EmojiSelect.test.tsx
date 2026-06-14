@@ -5,9 +5,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 
-import { EmojiSelect } from './EmojiSelect';
+import { TestProviders } from '#mocks';
 
-import { TestProvider } from '@desktop-client/redux/mock';
+import { EmojiSelect } from './EmojiSelect';
 
 vi.mock('@emoji-mart/data', () => ({
   default: {
@@ -209,32 +209,24 @@ describe('EmojiSelect', () => {
   });
 
   it('renders the flag input when closed', () => {
-    render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} />
-      </TestProvider>,
-    );
+    render(<EmojiSelect {...defaultProps} />, { wrapper: TestProviders });
 
     const input = screen.getByRole('textbox');
     expect(input).toBeInTheDocument();
   });
 
   it('opens picker when isOpen is true', () => {
-    render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} isOpen />
-      </TestProvider>,
-    );
+    render(<EmojiSelect {...defaultProps} isOpen />, {
+      wrapper: TestProviders,
+    });
 
     expect(screen.getByTestId('emoji-select-popover')).toBeInTheDocument();
   });
 
   it('displays emoji when value is set', () => {
-    render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} value=":grinning:" />
-      </TestProvider>,
-    );
+    render(<EmojiSelect {...defaultProps} value=":grinning:" />, {
+      wrapper: TestProviders,
+    });
 
     const input = screen.getByRole('textbox');
     expect(input).toHaveValue('😀');
@@ -242,11 +234,9 @@ describe('EmojiSelect', () => {
 
   it('calls onSelect when emoji is clicked', async () => {
     const onSelect = vi.fn();
-    render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} isOpen onSelect={onSelect} />
-      </TestProvider>,
-    );
+    render(<EmojiSelect {...defaultProps} isOpen onSelect={onSelect} />, {
+      wrapper: TestProviders,
+    });
 
     await waitFor(() => {
       expect(screen.getByText('😀')).toBeInTheDocument();
@@ -263,14 +253,13 @@ describe('EmojiSelect', () => {
   it('calls onSelect with null when remove button is clicked', async () => {
     const onSelect = vi.fn();
     render(
-      <TestProvider>
-        <EmojiSelect
-          {...defaultProps}
-          isOpen
-          value=":grinning:"
-          onSelect={onSelect}
-        />
-      </TestProvider>,
+      <EmojiSelect
+        {...defaultProps}
+        isOpen
+        value=":grinning:"
+        onSelect={onSelect}
+      />,
+      { wrapper: TestProviders },
     );
 
     await waitFor(() => {
@@ -285,11 +274,9 @@ describe('EmojiSelect', () => {
   });
 
   it('filters emojis when search query is entered', async () => {
-    render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} isOpen />
-      </TestProvider>,
-    );
+    render(<EmojiSelect {...defaultProps} isOpen />, {
+      wrapper: TestProviders,
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('emoji-select-popover')).toBeInTheDocument();
@@ -326,11 +313,9 @@ describe('EmojiSelect', () => {
   });
 
   it('normalizes search query by removing colons and converting underscores to spaces', async () => {
-    render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} isOpen />
-      </TestProvider>,
-    );
+    render(<EmojiSelect {...defaultProps} isOpen />, {
+      wrapper: TestProviders,
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('emoji-select-popover')).toBeInTheDocument();
@@ -389,16 +374,15 @@ describe('EmojiSelect', () => {
   it('handles keyboard navigation with arrow keys', async () => {
     const onSelect = vi.fn();
     render(
-      <TestProvider>
-        <EmojiSelect
-          {...defaultProps}
-          isOpen
-          onSelect={onSelect}
-          inputProps={{
-            ...defaultProps.inputProps,
-          }}
-        />
-      </TestProvider>,
+      <EmojiSelect
+        {...defaultProps}
+        isOpen
+        onSelect={onSelect}
+        inputProps={{
+          ...defaultProps.inputProps,
+        }}
+      />,
+      { wrapper: TestProviders },
     );
 
     await waitFor(() => {
@@ -432,9 +416,8 @@ describe('EmojiSelect', () => {
   it('closes picker on Escape key', async () => {
     const onSelect = vi.fn();
     const { rerender } = render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} isOpen onSelect={onSelect} />
-      </TestProvider>,
+      <EmojiSelect {...defaultProps} isOpen onSelect={onSelect} />,
+      { wrapper: TestProviders },
     );
 
     await waitFor(() => {
@@ -445,9 +428,7 @@ describe('EmojiSelect', () => {
     await userEvent.type(input, '{Escape}');
 
     rerender(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} isOpen={false} onSelect={onSelect} />
-      </TestProvider>,
+      <EmojiSelect {...defaultProps} isOpen={false} onSelect={onSelect} />,
     );
 
     expect(
@@ -456,22 +437,18 @@ describe('EmojiSelect', () => {
   });
 
   it('displays placeholder flag icon when value is null', () => {
-    render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} value={null} />
-      </TestProvider>,
-    );
+    render(<EmojiSelect {...defaultProps} value={null} />, {
+      wrapper: TestProviders,
+    });
 
     const input = screen.getByRole('textbox');
     expect(input).toHaveValue('');
   });
 
   it('handles embedded mode correctly', async () => {
-    render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} embedded />
-      </TestProvider>,
-    );
+    render(<EmojiSelect {...defaultProps} embedded />, {
+      wrapper: TestProviders,
+    });
 
     // In embedded mode, the picker should be open by default
     await waitFor(() => {
@@ -480,11 +457,9 @@ describe('EmojiSelect', () => {
   });
 
   it('converts shortcode value to native emoji for display', () => {
-    render(
-      <TestProvider>
-        <EmojiSelect {...defaultProps} value=":100:" />
-      </TestProvider>,
-    );
+    render(<EmojiSelect {...defaultProps} value=":100:" />, {
+      wrapper: TestProviders,
+    });
 
     const input = screen.getByRole('textbox');
     expect(input).toHaveValue('💯');

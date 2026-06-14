@@ -29,11 +29,9 @@ Here are some initial guidelines for how contributions will be treated:
 
 - @jfdoming
 - @joel-jeremy
-- @lelemm
 - @MatissJanis
 - @matt-fidd
 - @MikesGlitch
-- @RubenOlsen
 - @youngcw
 
 ### Alumni
@@ -46,7 +44,9 @@ Here are some initial guidelines for how contributions will be treated:
 - @j-f1
 - @jlongster
 - @Kidglove57
+- @lelemm
 - @rich-howell
+- @RubenOlsen
 - @shaankhosla
 - @shall0pass
 - @teprifer
@@ -146,6 +146,7 @@ The settings screen needs to also remain a place where core settings lives, we d
 
 ## Additional Resources
 
+- [AI Usage Policy](./ai-usage-policy.md) - What we expect when you use AI tools to contribute
 - [Development Setup](./development-setup.md) - Set up your development environment
 - [Testing Guide](./testing.md) - Learn about testing strategies and how to run tests
 - [Code Style Guide](./code-style.md) - Coding conventions and style guidelines

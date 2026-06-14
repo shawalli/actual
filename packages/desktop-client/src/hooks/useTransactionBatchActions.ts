@@ -1,29 +1,37 @@
 import { useTranslation } from 'react-i18next';
 
-import { send } from 'loot-core/platform/client/connection';
-import * as monthUtils from 'loot-core/shared/months';
-import { q } from 'loot-core/shared/query';
+import { send } from '@actual-app/core/platform/client/connection';
+import * as monthUtils from '@actual-app/core/shared/months';
+import { q } from '@actual-app/core/shared/query';
 import {
   deleteTransaction,
   realizeTempTransactions,
   ungroupTransaction,
   ungroupTransactions,
   updateTransaction,
-} from 'loot-core/shared/transactions';
-import { validForTransfer } from 'loot-core/shared/transfer';
-import { applyChanges, applyFindReplace } from 'loot-core/shared/util';
-import type { Diff } from 'loot-core/shared/util';
+} from '@actual-app/core/shared/transactions';
+import { validForTransfer } from '@actual-app/core/shared/transfer';
+import { applyChanges, applyFindReplace } from '@actual-app/core/shared/util';
+import type { Diff } from '@actual-app/core/shared/util';
 import type {
   AccountEntity,
   PayeeEntity,
   ScheduleEntity,
   TransactionEntity,
-} from 'loot-core/types/models';
+} from '@actual-app/core/types/models';
 
-import { pushModal } from '@desktop-client/modals/modalsSlice';
-import type { Modal as ModalType } from '@desktop-client/modals/modalsSlice';
-import { aqlQuery } from '@desktop-client/queries/aqlQuery';
-import { useDispatch } from '@desktop-client/redux';
+import { pushModal } from '#modals/modalsSlice';
+import type {
+  ConfirmTransactionEditReason,
+  Modal as ModalType,
+} from '#modals/modalsSlice';
+import { aqlQuery } from '#queries/aqlQuery';
+import { useDispatch } from '#redux';
+
+type BatchReconciledReason = Extract<
+  ConfirmTransactionEditReason,
+  `batch${string}Reconciled`
+>;
 
 type BatchEditProps = {
   name: keyof TransactionEntity;
@@ -125,10 +133,10 @@ export function useTransactionBatchActions() {
         if (name === 'notes') {
           if (mode === 'prepend') {
             valueToSet =
-              trans.notes === null ? value : `${value}${trans.notes}`;
+              trans.notes === null ? value : `${String(value)}${trans.notes}`;
           } else if (mode === 'append') {
             valueToSet =
-              trans.notes === null ? value : `${trans.notes}${value}`;
+              trans.notes === null ? value : `${trans.notes}${String(value)}`;
           } else if (mode === 'replace') {
             valueToSet = value;
           } else if (
@@ -206,6 +214,19 @@ export function useTransactionBatchActions() {
       );
     };
 
+    const pushEmojiAutocompleteModal = () => {
+      dispatch(
+        pushModal({
+          modal: {
+            name: 'emoji-autocomplete',
+            options: {
+              onSelect: emoji => onChange(name, emoji),
+            },
+          },
+        }),
+      );
+    };
+
     const pushEditField = () => {
       if (name !== 'date' && name !== 'amount' && name !== 'notes') {
         return;
@@ -240,6 +261,7 @@ export function useTransactionBatchActions() {
             name: 'category-autocomplete',
             options: {
               month: transactionsHaveSameMonth ? transactionMonth : undefined,
+              showNoneOption: true,
               onSelect: categoryId => onChange(name, categoryId),
             },
           },
@@ -247,17 +269,22 @@ export function useTransactionBatchActions() {
       );
     };
 
-    const pushEmojiAutocompleteModal = () => {
-      dispatch(
-        pushModal({
-          modal: {
-            name: 'emoji-autocomplete',
-            options: {
-              onSelect: (emoji: string | null) => onChange(name, emoji),
-            },
-          },
-        }),
-      );
+    const openFieldEditor = () => {
+      if (name === 'cleared') {
+        // Cleared just toggles it on/off and it depends on the data
+        // loaded. Need to clean this up in the future.
+        void onChange('cleared', null);
+      } else if (name === 'category') {
+        pushCategoryAutocompleteModal();
+      } else if (name === 'payee') {
+        pushPayeeAutocompleteModal();
+      } else if (name === 'account') {
+        pushAccountAutocompleteModal();
+      } else if (name === 'flag') {
+        pushEmojiAutocompleteModal();
+      } else {
+        pushEditField();
+      }
     };
 
     if (
@@ -267,47 +294,13 @@ export function useTransactionBatchActions() {
       name === 'flag' ||
       name === 'date'
     ) {
-      const reconciledTransactions = transactions.filter(t => t.reconciled);
-      if (reconciledTransactions.length > 0) {
-        dispatch(
-          pushModal({
-            modal: {
-              name: 'confirm-transaction-edit',
-              options: {
-                onConfirm: () => {
-                  if (name === 'payee') {
-                    pushPayeeAutocompleteModal();
-                  } else if (name === 'account') {
-                    pushAccountAutocompleteModal();
-                  } else if (name === 'flag') {
-                    pushEmojiAutocompleteModal();
-                  } else {
-                    pushEditField();
-                  }
-                },
-                confirmReason: 'batchEditWithReconciled',
-              },
-            },
-          }),
-        );
-        return;
-      }
-    }
-
-    if (name === 'cleared') {
-      // Cleared just toggles it on/off and it depends on the data
-      // loaded. Need to clean this up in the future.
-      void onChange('cleared', null);
-    } else if (name === 'category') {
-      pushCategoryAutocompleteModal();
-    } else if (name === 'payee') {
-      pushPayeeAutocompleteModal();
-    } else if (name === 'account') {
-      pushAccountAutocompleteModal();
-    } else if (name === 'flag') {
-      pushEmojiAutocompleteModal();
+      await checkForReconciledTransactions(
+        ids,
+        'batchEditWithReconciled',
+        openFieldEditor,
+      );
     } else {
-      pushEditField();
+      openFieldEditor();
     }
   };
 
@@ -326,7 +319,11 @@ export function useTransactionBatchActions() {
         added: transactions.reduce(
           (newTransactions: TransactionEntity[], trans: TransactionEntity) => {
             return newTransactions.concat(
-              realizeTempTransactions(ungroupTransaction(trans)),
+              realizeTempTransactions(ungroupTransaction(trans)).map(t => ({
+                ...t,
+                cleared: false,
+                reconciled: false,
+              })),
             );
           },
           [],
@@ -338,11 +335,7 @@ export function useTransactionBatchActions() {
       onSuccess?.(ids);
     };
 
-    await checkForReconciledTransactions(
-      ids,
-      'batchDuplicateWithReconciled',
-      onConfirmDuplicate,
-    );
+    await onConfirmDuplicate(ids);
   };
 
   const onBatchDelete = async ({ ids, onSuccess }: BatchDeleteProps) => {
@@ -468,9 +461,17 @@ export function useTransactionBatchActions() {
     onSuccess?.(ids);
   };
 
+  const transferReasonMap: Record<
+    BatchReconciledReason,
+    ConfirmTransactionEditReason
+  > = {
+    batchDeleteWithReconciled: 'batchDeleteWithReconciledTransfer',
+    batchEditWithReconciled: 'batchEditWithReconciledTransfer',
+  };
+
   const checkForReconciledTransactions = async (
     ids: Array<TransactionEntity['id']>,
-    confirmReason: string,
+    confirmReason: BatchReconciledReason,
     onConfirm: (ids: Array<TransactionEntity['id']>) => void,
   ) => {
     const { data } = await aqlQuery(
@@ -480,6 +481,7 @@ export function useTransactionBatchActions() {
         .options({ splits: 'grouped' }),
     );
     const transactions = ungroupTransactions(data as TransactionEntity[]);
+
     if (transactions.length > 0) {
       dispatch(
         pushModal({
@@ -494,9 +496,46 @@ export function useTransactionBatchActions() {
           },
         }),
       );
-    } else {
-      onConfirm(ids);
+      return;
     }
+
+    // check paired transfer transactions
+    const { data: selectedData } = await aqlQuery(
+      q('transactions')
+        .filter({ id: { $oneof: ids } })
+        .select(['transfer_id']),
+    );
+
+    const transferIds = (selectedData as TransactionEntity[])
+      .map(t => t.transfer_id)
+      .filter((id): id is string => id != null);
+
+    if (transferIds.length > 0) {
+      const { data: reconciledTransfers } = await aqlQuery(
+        q('transactions')
+          .filter({ id: { $oneof: transferIds }, reconciled: true })
+          .select('*'),
+      );
+
+      if ((reconciledTransfers as TransactionEntity[]).length > 0) {
+        dispatch(
+          pushModal({
+            modal: {
+              name: 'confirm-transaction-edit',
+              options: {
+                onConfirm: () => {
+                  onConfirm(ids);
+                },
+                confirmReason: transferReasonMap[confirmReason],
+              },
+            },
+          }),
+        );
+        return;
+      }
+    }
+
+    onConfirm(ids);
   };
 
   const onSetTransfer = async (

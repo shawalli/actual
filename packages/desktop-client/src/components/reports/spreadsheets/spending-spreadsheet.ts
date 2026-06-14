@@ -1,25 +1,25 @@
-// @ts-strict-ignore
-import keyBy from 'lodash/keyBy';
-
-import { send } from 'loot-core/platform/client/connection';
-import * as monthUtils from 'loot-core/shared/months';
-import { q } from 'loot-core/shared/query';
+import { send } from '@actual-app/core/platform/client/connection';
+import * as monthUtils from '@actual-app/core/shared/months';
+import { q } from '@actual-app/core/shared/query';
 import type {
   RuleConditionEntity,
   SpendingEntity,
   SpendingMonthEntity,
-} from 'loot-core/types/models';
+} from '@actual-app/core/types/models';
+// @ts-strict-ignore
+import keyBy from 'lodash/keyBy';
+
+import type { useSpreadsheet } from '#hooks/useSpreadsheet';
+import { aqlQuery } from '#queries/aqlQuery';
 
 import { makeQuery } from './makeQuery';
-
-import type { useSpreadsheet } from '@desktop-client/hooks/useSpreadsheet';
-import { aqlQuery } from '@desktop-client/queries/aqlQuery';
 
 type createSpendingSpreadsheetProps = {
   conditions?: RuleConditionEntity[];
   conditionsOp?: string;
   compare?: string;
   compareTo?: string;
+  budgetType?: 'envelope' | 'tracking';
 };
 
 export function createSpendingSpreadsheet({
@@ -27,6 +27,7 @@ export function createSpendingSpreadsheet({
   conditionsOp,
   compare,
   compareTo,
+  budgetType = 'envelope',
 }: createSpendingSpreadsheetProps) {
   const startDate = monthUtils.subMonths(compare, 3) + '-01';
   const endDate = monthUtils.getMonthEnd(compare + '-01');
@@ -113,9 +114,11 @@ export function createSpendingSpreadsheet({
     const combineDebts = [...debts, ...overlapDebts];
 
     const budgetMonth = parseInt(compare.replace('-', ''));
+    const budgetTable =
+      budgetType === 'tracking' ? 'reflect_budgets' : 'zero_budgets';
     const [budgets] = await Promise.all([
       aqlQuery(
-        q('zero_budgets')
+        q(budgetTable)
           .filter({
             $and: [{ month: { $eq: budgetMonth } }],
           })
@@ -132,7 +135,7 @@ export function createSpendingSpreadsheet({
 
     const dailyBudget =
       budgets &&
-      budgets.reduce((a, v) => (a = a + v.amount), 0) / compareInterval.length;
+      budgets.reduce((a, v) => a + v.amount, 0) / compareInterval.length;
 
     const intervals = monthUtils.dayRangeInclusive(startDate, endDate);
     if (endDateTo < startDate || startDateTo > endDate) {
@@ -178,13 +181,13 @@ export function createSpendingSpreadsheet({
             const intervalAssets = combineAssets
               .filter(e => !e.categoryIncome && !e.accountOffBudget)
               .filter(asset => asset.date === intervalItem)
-              .reduce((a, v) => (a = a + v.amount), 0);
+              .reduce((a, v) => a + v.amount, 0);
             perIntervalAssets += intervalAssets;
 
             const intervalDebts = combineDebts
               .filter(e => !e.categoryIncome && !e.accountOffBudget)
               .filter(debt => debt.date === intervalItem)
-              .reduce((a, v) => (a = a + v.amount), 0);
+              .reduce((a, v) => a + v.amount, 0);
             perIntervalDebts += intervalDebts;
 
             totalAssets += perIntervalAssets;
@@ -238,7 +241,7 @@ export function createSpendingSpreadsheet({
           b.cumulative === null ? a : b,
         ).cumulative;
 
-        const totalDaily = data.reduce((a, v) => (a = a + v.totalTotals), 0);
+        const totalDaily = data.reduce((a, v) => a + v.totalTotals, 0);
 
         return {
           date: data[0].date,

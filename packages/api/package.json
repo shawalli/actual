@@ -1,37 +1,64 @@
 {
   "name": "@actual-app/api",
-  "version": "26.3.0",
+  "version": "26.6.0",
   "description": "An API for Actual",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/actualbudget/actual.git",
+    "directory": "packages/api"
+  },
   "files": [
     "@types",
-    "dist"
+    "dist",
+    "!@types/**/*.test.d.ts",
+    "!@types/**/*.test.d.ts.map"
   ],
   "main": "dist/index.js",
   "types": "@types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./@types/index.d.ts",
+      "development": "./index.ts",
+      "default": "./dist/index.js"
+    },
+    "./models": {
+      "types": "./@types/models.d.ts",
+      "development": "./models.ts",
+      "default": "./dist/models.js"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./@types/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./models": {
+        "types": "./@types/models.d.ts",
+        "default": "./dist/models.js"
+      }
+    }
+  },
   "scripts": {
-    "build:app": "yarn workspace loot-core build:api",
-    "build:crdt": "yarn workspace @actual-app/crdt build",
-    "build:node": "tsc && tsc-alias",
-    "build:migrations": "cp migrations/*.sql dist/migrations",
-    "build:default-db": "cp default-db.sqlite dist/",
-    "build": "yarn run clean && yarn run build:app && yarn run build:node && yarn run build:migrations && yarn run build:default-db",
-    "test": "yarn run clean && yarn run build:app && yarn run build:crdt && vitest --run",
-    "clean": "rm -rf dist @types",
-    "typecheck": "yarn build && tsc --noEmit && tsc-strict"
+    "build": "vite build && tsgo --emitDeclarationOnly",
+    "test": "vitest --run",
+    "typecheck": "tsgo -b && tsc-strict"
   },
   "dependencies": {
-    "@actual-app/crdt": "workspace:^",
-    "better-sqlite3": "^12.6.2",
+    "@actual-app/core": "workspace:*",
+    "@actual-app/crdt": "workspace:*",
+    "better-sqlite3": "^12.8.0",
     "compare-versions": "^6.1.1",
-    "node-fetch": "^3.3.2",
-    "uuid": "^13.0.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "tsc-alias": "^1.8.16",
-    "typescript": "^5.9.3",
+    "@typescript/native-preview": "beta",
+    "rollup-plugin-visualizer": "^7.0.1",
     "typescript-strict-plugin": "^2.4.4",
-    "vitest": "^4.0.18"
+    "vite": "^8.0.5",
+    "vite-plugin-peggy-loader": "^2.0.1",
+    "vitest": "^4.1.2"
   },
   "engines": {
     "node": ">=20"

@@ -1,6 +1,10 @@
 import React from 'react';
 import { Route, Routes } from 'react-router';
 
+import { useFeatureFlag } from '#hooks/useFeatureFlag';
+
+import { AgeOfMoney } from './reports/AgeOfMoney';
+import { BalanceForecast } from './reports/BalanceForecast';
 import { BudgetAnalysis } from './reports/BudgetAnalysis';
 import { Calendar } from './reports/Calendar';
 import { CashFlow } from './reports/CashFlow';
@@ -8,15 +12,16 @@ import { Crossover } from './reports/Crossover';
 import { CustomReport } from './reports/CustomReport';
 import { Formula } from './reports/Formula';
 import { NetWorth } from './reports/NetWorth';
+import { Sankey } from './reports/Sankey';
 import { Spending } from './reports/Spending';
 import { Summary } from './reports/Summary';
 import { ReportsDashboardRouter } from './ReportsDashboardRouter';
 
-import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
-
 export function ReportRouter() {
-  const crossoverReportEnabled = useFeatureFlag('crossoverReport');
+  const ageOfMoneyReportEnabled = useFeatureFlag('ageOfMoneyReport');
+  const balanceForecastReportEnabled = useFeatureFlag('balanceForecastReport');
   const budgetAnalysisReportEnabled = useFeatureFlag('budgetAnalysisReport');
+  const sankeyReportEnabled = useFeatureFlag('sankeyReport');
 
   return (
     <Routes>
@@ -24,10 +29,12 @@ export function ReportRouter() {
       <Route path="/:dashboardId" element={<ReportsDashboardRouter />} />
       <Route path="/net-worth" element={<NetWorth />} />
       <Route path="/net-worth/:id" element={<NetWorth />} />
-      {crossoverReportEnabled && (
+      <Route path="/crossover" element={<Crossover />} />
+      <Route path="/crossover/:id" element={<Crossover />} />
+      {ageOfMoneyReportEnabled && (
         <>
-          <Route path="/crossover" element={<Crossover />} />
-          <Route path="/crossover/:id" element={<Crossover />} />
+          <Route path="/age-of-money" element={<AgeOfMoney />} />
+          <Route path="/age-of-money/:id" element={<AgeOfMoney />} />
         </>
       )}
       <Route path="/cash-flow" element={<CashFlow />} />
@@ -48,6 +55,18 @@ export function ReportRouter() {
       <Route path="/calendar/:id" element={<Calendar />} />
       <Route path="/formula" element={<Formula />} />
       <Route path="/formula/:id" element={<Formula />} />
+      {balanceForecastReportEnabled && (
+        <>
+          <Route path="/forecast" element={<BalanceForecast />} />
+          <Route path="/forecast/:id" element={<BalanceForecast />} />
+        </>
+      )}
+      {sankeyReportEnabled && (
+        <>
+          <Route path="/sankey" element={<Sankey />} />
+          <Route path="/sankey/:id" element={<Sankey />} />
+        </>
+      )}
     </Routes>
   );
 }

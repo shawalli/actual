@@ -10,46 +10,37 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { Tooltip } from '@actual-app/components/tooltip';
 import { View } from '@actual-app/components/view';
-import { format as formatDate, parseISO } from 'date-fns';
-
-import { currentDay, subDays } from 'loot-core/shared/months';
+import { currentDay, subDays } from '@actual-app/core/shared/months';
 import type {
   AccountEntity,
+  SyncServerEnableBankingAccount,
   SyncServerGoCardlessAccount,
   SyncServerPluggyAiAccount,
   SyncServerSimpleFinAccount,
-} from 'loot-core/types/models';
+} from '@actual-app/core/types/models';
+import { format as formatDate, parseISO } from 'date-fns';
 
 import {
+  useLinkAccountEnableBankingMutation,
   useLinkAccountMutation,
   useLinkAccountPluggyAiMutation,
   useLinkAccountSimpleFinMutation,
   useUnlinkAccountMutation,
-} from '@desktop-client/accounts';
-import { Autocomplete } from '@desktop-client/components/autocomplete/Autocomplete';
-import type { AutocompleteItem } from '@desktop-client/components/autocomplete/Autocomplete';
-import {
-  Modal,
-  ModalCloseButton,
-  ModalHeader,
-} from '@desktop-client/components/common/Modal';
-import { FinancialText } from '@desktop-client/components/FinancialText';
-import { PrivacyFilter } from '@desktop-client/components/PrivacyFilter';
-import {
-  Cell,
-  Field,
-  Row,
-  Table,
-  TableHeader,
-} from '@desktop-client/components/table';
-import { AmountInput } from '@desktop-client/components/util/AmountInput';
-import { useAccounts } from '@desktop-client/hooks/useAccounts';
-import { useDateFormat } from '@desktop-client/hooks/useDateFormat';
-import { useFormat } from '@desktop-client/hooks/useFormat';
-import { closeModal } from '@desktop-client/modals/modalsSlice';
-import { transactions } from '@desktop-client/queries';
-import { liveQuery } from '@desktop-client/queries/liveQuery';
-import { useDispatch } from '@desktop-client/redux';
+} from '#accounts';
+import { Autocomplete } from '#components/autocomplete/Autocomplete';
+import type { AutocompleteItem } from '#components/autocomplete/Autocomplete';
+import { Modal, ModalCloseButton, ModalHeader } from '#components/common/Modal';
+import { FinancialText } from '#components/FinancialText';
+import { PrivacyFilter } from '#components/PrivacyFilter';
+import { Cell, Field, Row, Table, TableHeader } from '#components/table';
+import { AmountInput } from '#components/util/AmountInput';
+import { useAccounts } from '#hooks/useAccounts';
+import { useDateFormat } from '#hooks/useDateFormat';
+import { useFormat } from '#hooks/useFormat';
+import { closeModal } from '#modals/modalsSlice';
+import { transactions } from '#queries';
+import { liveQuery } from '#queries/liveQuery';
+import { useDispatch } from '#redux';
 
 function useAddBudgetAccountOptions() {
   const { t } = useTranslation();
@@ -85,22 +76,32 @@ export type SelectLinkedAccountsModalProps =
       requisitionId: string;
       externalAccounts: SyncServerGoCardlessAccount[];
       syncSource: 'goCardless';
+      upgradingAccountId?: string;
     }
   | {
       requisitionId?: undefined;
       externalAccounts: SyncServerSimpleFinAccount[];
       syncSource: 'simpleFin';
+      upgradingAccountId?: string;
     }
   | {
       requisitionId?: undefined;
       externalAccounts: SyncServerPluggyAiAccount[];
       syncSource: 'pluggyai';
+      upgradingAccountId?: string;
+    }
+  | {
+      requisitionId?: undefined;
+      externalAccounts: SyncServerEnableBankingAccount[];
+      syncSource: 'enableBanking';
+      upgradingAccountId?: string;
     };
 
 export function SelectLinkedAccountsModal({
   requisitionId = undefined,
   externalAccounts,
   syncSource,
+  upgradingAccountId,
 }: SelectLinkedAccountsModalProps) {
   const propsWithSortedExternalAccounts =
     useMemo<SelectLinkedAccountsModalProps>(() => {
@@ -115,22 +116,31 @@ export function SelectLinkedAccountsModal({
           return {
             syncSource: 'simpleFin',
             externalAccounts: toSort as SyncServerSimpleFinAccount[],
+            upgradingAccountId,
           };
         case 'pluggyai':
           return {
             syncSource: 'pluggyai',
             externalAccounts: toSort as SyncServerPluggyAiAccount[],
+            upgradingAccountId,
           };
         case 'goCardless':
           return {
             syncSource: 'goCardless',
             requisitionId: requisitionId!,
             externalAccounts: toSort as SyncServerGoCardlessAccount[],
+            upgradingAccountId,
+          };
+        case 'enableBanking':
+          return {
+            syncSource: 'enableBanking',
+            externalAccounts: toSort as SyncServerEnableBankingAccount[],
+            upgradingAccountId,
           };
         default:
-          throw new Error(`Unrecognized sync source: ${syncSource}`);
+          throw new Error(`Unrecognized sync source: ${String(syncSource)}`);
       }
-    }, [externalAccounts, syncSource, requisitionId]);
+    }, [externalAccounts, syncSource, requisitionId, upgradingAccountId]);
 
   const { t } = useTranslation();
   const { isNarrowWidth } = useResponsive();
@@ -139,14 +149,39 @@ export function SelectLinkedAccountsModal({
   const localAccounts = allAccounts.filter(a => a.closed === 0);
   const [draftLinkAccounts, setDraftLinkAccounts] = useState<
     Map<string, 'linking' | 'unlinking'>
-  >(new Map());
+  >(() => {
+    const externalAccountIds = new Set(externalAccounts.map(a => a.account_id));
+    const initial = new Map<string, 'linking' | 'unlinking'>();
+    for (const acc of localAccounts) {
+      if (acc.account_id && externalAccountIds.has(acc.account_id)) {
+        initial.set(acc.account_id, 'linking');
+      }
+    }
+    return initial;
+  });
   const [chosenAccounts, setChosenAccounts] = useState<Record<string, string>>(
     () => {
-      return Object.fromEntries(
+      const initiallyChosenAccounts = Object.fromEntries(
         localAccounts
           .filter(acc => acc.account_id)
           .map(acc => [acc.account_id, acc.id]),
       );
+
+      const preselectedExternalAccount =
+        propsWithSortedExternalAccounts.externalAccounts.find(
+          account => initiallyChosenAccounts[account.account_id] == null,
+        );
+
+      if (
+        upgradingAccountId &&
+        preselectedExternalAccount &&
+        !Object.values(initiallyChosenAccounts).includes(upgradingAccountId)
+      ) {
+        initiallyChosenAccounts[preselectedExternalAccount.account_id] =
+          upgradingAccountId;
+      }
+
+      return initiallyChosenAccounts;
     },
   );
   const [customStartingDates, setCustomStartingDates] = useState<
@@ -159,6 +194,7 @@ export function SelectLinkedAccountsModal({
   const unlinkAccount = useUnlinkAccountMutation();
   const linkAccountSimpleFin = useLinkAccountSimpleFinMutation();
   const linkAccountPluggyAi = useLinkAccountPluggyAiMutation();
+  const linkAccountEnableBanking = useLinkAccountEnableBankingMutation();
 
   async function onNext() {
     const chosenLocalAccountIds = Object.values(chosenAccounts);
@@ -211,6 +247,23 @@ export function SelectLinkedAccountsModal({
           });
         } else if (propsWithSortedExternalAccounts.syncSource === 'pluggyai') {
           linkAccountPluggyAi.mutate({
+            externalAccount:
+              propsWithSortedExternalAccounts.externalAccounts[
+                externalAccountIndex
+              ],
+            upgradingId:
+              chosenLocalAccountId !== addOnBudgetAccountOption.id &&
+              chosenLocalAccountId !== addOffBudgetAccountOption.id
+                ? chosenLocalAccountId
+                : undefined,
+            offBudget,
+            startingDate,
+            startingBalance,
+          });
+        } else if (
+          propsWithSortedExternalAccounts.syncSource === 'enableBanking'
+        ) {
+          linkAccountEnableBanking.mutate({
             externalAccount:
               propsWithSortedExternalAccounts.externalAccounts[
                 externalAccountIndex
@@ -294,7 +347,7 @@ export function SelectLinkedAccountsModal({
   // Memoize default starting settings to avoid repeated calculations
   const defaultStartingSettings = useMemo<StartingBalanceInfo>(
     () => ({
-      date: subDays(currentDay(), 90),
+      date: subDays(currentDay(), 89),
       amount: 0,
     }),
     [],
@@ -304,7 +357,7 @@ export function SelectLinkedAccountsModal({
     if (customStartingDates[accountId]) {
       return customStartingDates[accountId];
     }
-    // Default to 90 days ago (matches server default)
+    // Default to 89 days ago (90 days inclusive, matches server default)
     return defaultStartingSettings;
   };
 
@@ -347,13 +400,13 @@ export function SelectLinkedAccountsModal({
           : { width: 1000 },
       }}
     >
-      {({ state: { close } }) => (
+      {({ state }) => (
         <View
           style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
         >
           <ModalHeader
             title={t('Link Accounts')}
-            rightContent={<ModalCloseButton onPress={close} />}
+            rightContent={<ModalCloseButton onPress={() => state.close()} />}
           />
 
           <View
@@ -479,7 +532,8 @@ export function SelectLinkedAccountsModal({
 type ExternalAccount =
   | SyncServerGoCardlessAccount
   | SyncServerSimpleFinAccount
-  | SyncServerPluggyAiAccount;
+  | SyncServerPluggyAiAccount
+  | SyncServerEnableBankingAccount;
 
 type StartingBalanceInfo = {
   date: string;
@@ -717,7 +771,8 @@ function getInstitutionName(
   externalAccount:
     | SyncServerGoCardlessAccount
     | SyncServerSimpleFinAccount
-    | SyncServerPluggyAiAccount,
+    | SyncServerPluggyAiAccount
+    | SyncServerEnableBankingAccount,
 ) {
   if (typeof externalAccount?.institution === 'string') {
     return externalAccount?.institution ?? '';

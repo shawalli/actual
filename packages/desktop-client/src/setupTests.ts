@@ -41,8 +41,3 @@ process.on('unhandledRejection', (reason: unknown) => {
 afterEach(() => {
   global.__resetWorld();
 });
-
-if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
-  // eslint-disable-next-line no-extend-native, no-empty-function
-  Element.prototype.scrollIntoView = () => {};
-}

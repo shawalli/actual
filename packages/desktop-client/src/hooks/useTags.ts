@@ -6,8 +6,29 @@ import { byLengthAsc, byStartAsc, Fzf } from 'fzf';
 
 import { tagQueries } from '#tags/queries';
 
+import { useSyncedPref } from './useSyncedPref';
+
 export function useTags() {
-  return useQuery(tagQueries.list());
+  const [showHiddenTags] = useSyncedPref('show-hidden-tags');
+  return useQuery({
+    ...tagQueries.list(),
+    select: data => {
+      return showHiddenTags === 'true' ? data : data.filter(tag => !tag.hidden);
+    },
+  });
+}
+
+export function filterTags<T extends TagEntity>(
+  tags: T[],
+  filterStr: string,
+): T[] {
+  return new Fzf(tags as TagEntity[], {
+    selector: tag => tag.tag,
+    limit: 100,
+    tiebreakers: [byLengthAsc, byStartAsc],
+  })
+    .find(filterStr.replace(/^#/, ''))
+    .map(item => item.item as T);
 }
 
 export function filterTags<T extends TagEntity>(
@@ -35,6 +56,7 @@ export function useFilteredTags(
       selector: tag => tag.tag,
       limit: 100,
       tiebreakers: [byLengthAsc, byStartAsc],
+      casing: 'case-insensitive',
     })
       .find(filterStr.replace(/^#/, ''))
       .map(item => item.item);

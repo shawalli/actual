@@ -9,10 +9,10 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import { shortcodeToNative } from '@actual-app/core/shared/emoji';
-import { friendlyOp, mapField } from '@actual-app/core/shared/rules';
 import type { RuleConditionEntity } from '@actual-app/core/types/models';
 
 import { Value } from '#components/rules/Value';
+import { friendlyOp, mapField } from '#util/rule';
 
 import { FilterEditor } from './FiltersMenu';
 import { subfieldFromFilter } from './subfieldFromFilter';

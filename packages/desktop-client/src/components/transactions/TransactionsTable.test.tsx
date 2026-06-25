@@ -983,10 +983,7 @@ describe('Transactions', () => {
     await waitForAutocomplete();
     await waitForAutocomplete();
 
-    await userEvent.click(
-      container.querySelector('[data-testid="add-split-button"]')!,
-    );
-
+    // Splitting starts with two empty splits
     input = await editNewField(container, 'debit', 1);
     await userEvent.clear(input);
     await userEvent.type(input, '45.00');
@@ -1280,7 +1277,7 @@ describe('Transactions', () => {
         id: expect.any(String),
         is_parent: true,
         notes: 'Notes',
-        payee: 'alice-id',
+        payee: null,
         reconciled: false,
         sort_order: 0,
       },

@@ -1,7 +1,30 @@
 #!/usr/bin/env zsh
 
+set -euo pipefail
+
+ORIGIN_REMOTE="origin"
+
+# Usage:
+#   ./scripts/flyio-build-image.sh                # Build for the latest fork tag
+#   ./scripts/flyio-build-image.sh --tag vX.Y.Z.N
+
+if [[ $# -gt 2 ]]; then
+  echo "Usage: $0 [--tag vX.Y.Z.N]"
+  exit 1
+fi
+
+TARGET_TAG=""
+if [[ $# -gt 0 ]]; then
+  if [[ "$1" != "--tag" || $# -ne 2 ]]; then
+    echo "Usage: $0 [--tag vX.Y.Z.N]"
+    exit 1
+  fi
+
+  TARGET_TAG="$2"
+fi
+
 # Read Fly.io app name from fly.toml (gitignored)
-if [ -f fly.toml ]; then  
+if [ -f fly.toml ]; then
   FLY_APP=$(grep '^app' fly.toml | cut -d'"' -f2)
   if [ -z "$FLY_APP" ]; then
     echo "Error: Could not find app name in fly.toml"
@@ -12,48 +35,43 @@ else
   exit 1
 fi
 
-# Auto-find the latest upstream tag matching v.MM.m.p pattern (e.g., v26.2.2)
-UPSTREAM_VERSION=$(git tag --sort=-version:refname | grep -E '^v[0-9]{2}\.[0-9]\.[0-9]+$' | head -1 | sed 's/^v//')
-
-# Find the latest fork tag with a 4th segment for this upstream version
-# Pattern: 26.2.2.1, 26.2.2.2, etc. (with or without 'v' prefix)
-LATEST_FORK_TAG=$(git tag --sort=-version:refname | grep -E "^v?${UPSTREAM_VERSION}\.[0-9]+$" | head -1)
-
-if [ -n "$LATEST_FORK_TAG" ]; then
-  # Extract the 4th segment and increment it
-  FOURTH_SEGMENT=$(echo "$LATEST_FORK_TAG" | sed 's/^v//' | awk -F. '{print $4}')
-  NEXT_SEGMENT=$((FOURTH_SEGMENT + 1))
-  NEW_FORK_TAG="${UPSTREAM_VERSION}.${NEXT_SEGMENT}"
-else
-  # No fork tags exist yet, start at .1
-  NEW_FORK_TAG="${UPSTREAM_VERSION}.1"
+if [[ -z "$TARGET_TAG" ]]; then
+  TARGET_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
 fi
 
+if [[ -z "$TARGET_TAG" ]]; then
+  echo "Error: No fork release tag found. Pass one with --tag."
+  exit 1
+fi
+
+if ! echo "$TARGET_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+  echo "Error: Tag must match vX.Y.Z.N. Received: ${TARGET_TAG}"
+  exit 1
+fi
+
+if [[ -z $(git ls-remote --tags "$ORIGIN_REMOTE" "$TARGET_TAG") ]]; then
+  echo "Error: Tag ${TARGET_TAG} was not found on ${ORIGIN_REMOTE}. Push and verify the tag before building the image."
+  exit 1
+fi
+
+echo "Using release tag ${TARGET_TAG}"
+
 echo "Building application..."
-yarn build:server || { echo "Error: yarn build:server failed"; exit 1; }
+yarn build:server
 
 docker build \
   --platform linux/amd64 \
   -f packages/sync-server/docker/ubuntu.Dockerfile \
-  -t registry.fly.io/${FLY_APP}:${NEW_FORK_TAG} \
+  -t registry.fly.io/${FLY_APP}:${TARGET_TAG} \
   -t registry.fly.io/${FLY_APP}:latest \
-  . && echo "Successfully built image: registry.fly.io/${FLY_APP} for tags: ${NEW_FORK_TAG} // latest"
+  .
+
+echo "Successfully built image: registry.fly.io/${FLY_APP} for tags: ${TARGET_TAG} // latest"
 
 fly auth docker
 
-docker push registry.fly.io/${FLY_APP}:${NEW_FORK_TAG} && \
-  echo "Successfully pushed private image: registry.fly.io/${FLY_APP}:${NEW_FORK_TAG}"
+docker push registry.fly.io/${FLY_APP}:${TARGET_TAG}
+echo "Successfully pushed private image: registry.fly.io/${FLY_APP}:${TARGET_TAG}"
 
-docker push registry.fly.io/${FLY_APP}:latest && \
-  echo "Successfully pushed private image: registry.fly.io/${FLY_APP}:latest"
-
-read "Do you want to tag and push to GitHub? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]
-then
-  git tag "${NEW_FORK_TAG}" && \
-    echo "Successfully tagged ${NEW_FORK_TAG}"
-
-  git push origin "${NEW_FORK_TAG}" && \
-    echo "Successfully pushed tag ${NEW_FORK_TAG} to remote repository"
-fi
+docker push registry.fly.io/${FLY_APP}:latest
+echo "Successfully pushed private image: registry.fly.io/${FLY_APP}:latest"

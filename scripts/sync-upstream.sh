@@ -113,7 +113,7 @@ if [[ "$FINALIZE" == true ]]; then
         echo "✓ Tag ${FORK_SYNC_TAG} pushed to ${ORIGIN_REMOTE}."
         echo ""
         echo "Sync complete! Next steps:"
-        echo "  - Run './scripts/flyio-build-image.sh' to build and tag a fork release"
+        echo "  - Run './scripts/flyio-build-image.sh --tag ${FORK_SYNC_TAG}' to build the Fly.io image"
         echo "  - Or run './scripts/sync-upstream.sh' again to sync another upstream release"
     else
         echo ""
@@ -224,11 +224,17 @@ After merging this PR:
    \`\`\`
    This will create and push the \`${FORK_SYNC_TAG}\` tag.
 
-3. (Optional) Build and deploy a fork release:
+3. Or run the full sync release command after merging:
    \`\`\`bash
-   ./scripts/flyio-build-image.sh
+   ./scripts/release-fork.sh sync
    \`\`\`
-   This will auto-increment to \`v${UPSTREAM_VERSION}.1\` or higher.
+   This will create, push, verify, and build from the \`${FORK_SYNC_TAG}\` tag.
+
+4. (Optional) If you used the finalize command, build the Fly.io image for the sync tag after it is pushed:
+   \`\`\`bash
+   ./scripts/flyio-build-image.sh --tag ${FORK_SYNC_TAG}
+   \`\`\`
+   This uses the sync tag directly.
 EOF
 )"
 
@@ -239,7 +245,8 @@ EOF
     echo ""
     echo "Next steps:"
     echo "  1. Review and merge the PR in GitHub"
-    echo "  2. Run: ./scripts/sync-upstream.sh --finalize"
-    echo "  3. Commit the ${FORK_SYNC_TAG} tag to mark the sync boundary"
+    echo "  2. Run './scripts/release-fork.sh sync' for the full sync release"
+    echo "     or './scripts/sync-upstream.sh --finalize' for tag-only finalization"
+    echo "  3. Use ${FORK_SYNC_TAG} to mark the sync boundary"
 
 fi

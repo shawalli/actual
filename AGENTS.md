@@ -42,6 +42,30 @@ yarn start:desktop
 - Use `yarn workspace <workspace-name> run <command>` for workspace-specific tasks
 - Tests run once and exit by default (using `vitest --run`)
 
+### Fork Release Workflow
+
+- This fork uses four-segment versions: upstream `vX.Y.Z`, sync release `vX.Y.Z.0`, then fork-only releases `vX.Y.Z.1`, `vX.Y.Z.2`, and so on.
+- A release always happens from `fork/master` after the release or feature branch has already been merged there.
+- Sync releases do not get a GitHub Release. Feature releases may get a GitHub Release, but it is created manually after the tag is pushed.
+- The Fly.io image must be built only after the Git tag has been pushed and verified on GitHub.
+
+```bash
+# Sync upstream into fork/master, open the PR, then either tag only or do the full sync release
+./scripts/sync-upstream.sh
+
+# Tag only
+./scripts/sync-upstream.sh --finalize
+
+# Tag, push, verify, and build the Fly.io image for a sync release
+./scripts/release-fork.sh sync
+
+# Tag, push, and verify a feature release
+./scripts/release-fork.sh feature
+
+# After manually creating the GitHub Release for a feature tag, build the private Fly.io image
+./scripts/flyio-build-image.sh --tag vX.Y.Z.N
+```
+
 ### ⚠️ CRITICAL REQUIREMENT: AI-Generated Commit Messages and PR Titles
 
 **ALL commit messages and PR titles MUST be prefixed with `[AI]`.** No exceptions.

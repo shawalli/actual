@@ -1,7 +1,7 @@
 // @ts-strict-ignore
 import * as dateFns from 'date-fns';
 
-import { logger } from '../../platform/server/log';
+import { logger } from '#platform/server/log';
 import {
   addDays,
   isAfter,
@@ -10,13 +10,14 @@ import {
   parseDate,
   subDays,
   yearFromDate,
-} from '../../shared/months';
+} from '#shared/months';
 import {
   FIELD_TYPES,
   getApproxNumberThreshold,
   isValidOp,
   sortNumbers,
-} from '../../shared/rules';
+} from '#shared/rules';
+import { extractTagsForFilter } from '#shared/tags';
 
 import {
   assert,
@@ -98,6 +99,7 @@ export const CONDITION_TYPES = {
       'doesNotContain',
       'notOneOf',
       'hasTags',
+      'hasAnyTag',
     ],
     nullable: true,
     parse(op, value, fieldName) {
@@ -126,7 +128,8 @@ export const CONDITION_TYPES = {
         op === 'contains' ||
         op === 'matches' ||
         op === 'doesNotContain' ||
-        op === 'hasTags'
+        op === 'hasTags' ||
+        op === 'hasAnyTag'
       ) {
         assert(
           value.length > 0,
@@ -135,7 +138,7 @@ export const CONDITION_TYPES = {
         );
       }
 
-      if (op === 'hasTags') {
+      if (op === 'hasTags' || op === 'hasAnyTag') {
         return value;
       }
 
@@ -354,7 +357,30 @@ export class Condition {
         if (fieldValue === null) {
           return false;
         }
-        return String(fieldValue).indexOf(this.value) !== -1;
+        const normalizedFieldValue = String(fieldValue);
+        const tags = extractTagsForFilter(this.value);
+        return !tags.some(tag => {
+          const escapedTag = tag
+            .toLowerCase()
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const pattern = new RegExp(`(?<!#)${escapedTag}([\\s#]|$)`);
+          return !pattern.test(normalizedFieldValue);
+        });
+
+      case 'hasAnyTag': {
+        if (fieldValue === null) {
+          return false;
+        }
+        const normalizedFieldValue = String(fieldValue);
+        const tags = extractTagsForFilter(this.value);
+        return tags.some(tag => {
+          const escapedTag = tag
+            .toLowerCase()
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const pattern = new RegExp(`(?<!#)${escapedTag}([\\s#]|$)`);
+          return pattern.test(normalizedFieldValue);
+        });
+      }
 
       case 'notOneOf':
         if (fieldValue === null) {

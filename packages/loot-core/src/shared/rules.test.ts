@@ -19,6 +19,7 @@ describe('rules', () => {
       expect(isValidOp('notes', 'doesNotContain')).toBe(true);
       expect(isValidOp('notes', 'matches')).toBe(true);
       expect(isValidOp('notes', 'hasTags')).toBe(true);
+      expect(isValidOp('notes', 'hasAnyTag')).toBe(true);
     });
 
     it('should return true for oneOf operation on payee field', () => {
@@ -43,6 +44,7 @@ describe('rules', () => {
       expect(isValidOp('flag', 'oneOf')).toBe(false);
       expect(isValidOp('flag', 'notOneOf')).toBe(false);
       expect(isValidOp('flag', 'hasTags')).toBe(false);
+      expect(isValidOp('flag', 'hasAnyTag')).toBe(false);
     });
   });
 
@@ -61,6 +63,7 @@ describe('rules', () => {
       expect(validOps).toContain('doesNotContain');
       expect(validOps).toContain('matches');
       expect(validOps).toContain('hasTags');
+      expect(validOps).toContain('hasAnyTag');
     });
 
     it('should include oneOf and notOneOf for payee field', () => {
@@ -81,6 +84,7 @@ describe('rules', () => {
       expect(validOps).not.toContain('oneOf');
       expect(validOps).not.toContain('notOneOf');
       expect(validOps).not.toContain('hasTags');
+      expect(validOps).not.toContain('hasAnyTag');
     });
   });
 });

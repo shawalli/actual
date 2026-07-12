@@ -1,25 +1,21 @@
 import React from 'react';
 import { Provider } from 'react-redux';
 
+import { send } from '@actual-app/core/platform/client/connection';
+import type { TransactionEntity } from '@actual-app/core/types/models';
 import { act, renderHook } from '@testing-library/react';
 import { vi } from 'vitest';
 
-import { send } from 'loot-core/platform/client/connection';
-import type { TransactionEntity } from 'loot-core/types/models';
+import { configureTestAppStore, createTestQueryClient } from '#mocks';
+import { aqlQuery } from '#queries/aqlQuery';
 
 import { useTransactionBatchActions } from './useTransactionBatchActions';
 
-import {
-  configureTestAppStore,
-  createTestQueryClient,
-} from '@desktop-client/mocks';
-import { aqlQuery } from '@desktop-client/queries/aqlQuery';
-
-vi.mock('loot-core/platform/client/connection', () => ({
+vi.mock('@actual-app/core/platform/client/connection', () => ({
   send: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@desktop-client/queries/aqlQuery', () => ({
+vi.mock('#queries/aqlQuery', () => ({
   aqlQuery: vi.fn(),
 }));
 
@@ -29,6 +25,13 @@ vi.mock('react-i18next', () => ({
 
 const mockSend = vi.mocked(send);
 const mockAqlQuery = vi.mocked(aqlQuery);
+
+function mockNonReconciledBatchEditQueries(transactions: TransactionEntity[]) {
+  mockAqlQuery
+    .mockResolvedValueOnce({ data: transactions })
+    .mockResolvedValueOnce({ data: [] })
+    .mockResolvedValueOnce({ data: transactions });
+}
 
 function makeTransaction(
   overrides: Partial<TransactionEntity> = {},
@@ -67,7 +70,7 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
 
   it('dispatches emoji-autocomplete modal when bulk-editing flag', async () => {
     const tx = makeTransaction({ id: 'tx-1' });
-    mockAqlQuery.mockResolvedValue({ data: [tx] });
+    mockNonReconciledBatchEditQueries([tx]);
 
     const { hook, store } = renderBatchActionsHook();
 
@@ -85,7 +88,7 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
 
   it('does not dispatch edit-field modal when bulk-editing flag', async () => {
     const tx = makeTransaction({ id: 'tx-1' });
-    mockAqlQuery.mockResolvedValue({ data: [tx] });
+    mockNonReconciledBatchEditQueries([tx]);
 
     const { hook, store } = renderBatchActionsHook();
 
@@ -113,7 +116,7 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
         }),
       ],
     } as Partial<TransactionEntity>);
-    mockAqlQuery.mockResolvedValue({ data: [parent] });
+    mockNonReconciledBatchEditQueries([parent]);
 
     const { hook, store } = renderBatchActionsHook();
 
@@ -193,7 +196,9 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
 
   it('shows reconciled-transaction confirmation modal before the emoji picker', async () => {
     const tx = makeTransaction({ id: 'tx-1', reconciled: true });
-    mockAqlQuery.mockResolvedValue({ data: [tx] });
+    mockAqlQuery
+      .mockResolvedValueOnce({ data: [tx] })
+      .mockResolvedValueOnce({ data: [tx] });
 
     const { hook, store } = renderBatchActionsHook();
 

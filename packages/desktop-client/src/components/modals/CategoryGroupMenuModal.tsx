@@ -29,14 +29,14 @@ import {
   ModalCloseButton,
   ModalHeader,
   ModalTitle,
-} from '@desktop-client/components/common/Modal';
-import { CategoryGroupActionMenu } from '@desktop-client/components/mobile/budget/CategoryGroupActionMenu';
-import { Notes } from '@desktop-client/components/Notes';
-import { useCategories } from '@desktop-client/hooks/useCategories';
-import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
-import { useNotes } from '@desktop-client/hooks/useNotes';
-import { useUndo } from '@desktop-client/hooks/useUndo';
-import type { Modal as ModalType } from '@desktop-client/modals/modalsSlice';
+} from '#components/common/Modal';
+import { CategoryGroupActionMenu } from '#components/mobile/budget/CategoryGroupActionMenu';
+import { Notes } from '#components/Notes';
+import { useCategories } from '#hooks/useCategories';
+import { useFeatureFlag } from '#hooks/useFeatureFlag';
+import { useNotes } from '#hooks/useNotes';
+import { useUndo } from '#hooks/useUndo';
+import type { Modal as ModalType } from '#modals/modalsSlice';
 
 type CategoryGroupMenuModalProps = Extract<
   ModalType,
@@ -133,7 +133,7 @@ export function CategoryGroupMenuModal({
         },
       }}
     >
-      {({ state: { close } }) => (
+      {({ state }) => (
         <>
           <ModalHeader
             leftContent={
@@ -150,7 +150,7 @@ export function CategoryGroupMenuModal({
                 onTitleUpdate={onRename}
               />
             }
-            rightContent={<ModalCloseButton onPress={close} />}
+            rightContent={<ModalCloseButton onPress={() => state.close()} />}
           />
           <View
             style={{
@@ -237,7 +237,7 @@ export function CategoryGroupMenuModal({
                 getItemStyle={() => defaultMenuItemStyle}
                 onApplyBudgetTemplatesInGroup={() => {
                   _onApplyBudgetTemplatesInGroup();
-                  close();
+                  state.close();
                   showUndoNotification({
                     message: t('budget templates have been applied.'),
                   });

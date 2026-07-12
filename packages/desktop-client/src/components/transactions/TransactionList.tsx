@@ -2,22 +2,23 @@
 // TODO: remove strict
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import type { RefObject } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 
 import { theme } from '@actual-app/components/theme';
-
-import { send } from 'loot-core/platform/client/connection';
-import * as monthUtils from 'loot-core/shared/months';
-import { q } from 'loot-core/shared/query';
-import { getUpcomingDays } from 'loot-core/shared/schedules';
+import { send } from '@actual-app/core/platform/client/connection';
+import * as monthUtils from '@actual-app/core/shared/months';
+import { q } from '@actual-app/core/shared/query';
+import { getUpcomingDays } from '@actual-app/core/shared/schedules';
 import {
   addSplitTransaction,
   applyTransactionDiff,
+  isPreviewId,
   realizeTempTransactions,
   splitTransaction,
   updateTransaction,
-} from 'loot-core/shared/transactions';
-import { applyChanges, getChangedValues } from 'loot-core/shared/util';
+} from '@actual-app/core/shared/transactions';
+import { applyChanges, getChangedValues } from '@actual-app/core/shared/util';
 import type {
   AccountEntity,
   CategoryEntity,
@@ -27,18 +28,20 @@ import type {
   ScheduleEntity,
   TransactionEntity,
   TransactionFilterEntity,
-} from 'loot-core/types/models';
+} from '@actual-app/core/types/models';
+
+import { FeatureErrorFallback } from '#components/FeatureErrorFallback';
+import type { TableHandleRef } from '#components/table';
+import { isValidBoundaryDrop } from '#hooks/useDragDrop';
+import type { DropPosition } from '#hooks/useDragDrop';
+import { useNavigate } from '#hooks/useNavigate';
+import { useSyncedPref } from '#hooks/useSyncedPref';
+import { pushModal } from '#modals/modalsSlice';
+import { addNotification } from '#notifications/notificationsSlice';
+import { useDispatch } from '#redux';
 
 import { TransactionTable } from './TransactionsTable';
 import type { TransactionTableProps } from './TransactionsTable';
-
-import type { TableHandleRef } from '@desktop-client/components/table';
-import { useNavigate } from '@desktop-client/hooks/useNavigate';
-import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
-import { pushModal } from '@desktop-client/modals/modalsSlice';
-import { addNotification } from '@desktop-client/notifications/notificationsSlice';
-import { useDispatch } from '@desktop-client/redux';
-
 // When data changes, there are two ways to update the UI:
 //
 // * Optimistic updates: we apply the needed updates to local data
@@ -270,6 +273,8 @@ type TransactionListProps = Pick<
   allTransactions: TransactionEntity[];
   account: AccountEntity | undefined;
   category: CategoryEntity | undefined;
+  isFiltered?: boolean;
+  allowReorder?: boolean;
   onChange: (
     transaction: TransactionEntity,
     transactions: TransactionEntity[],
@@ -298,6 +303,8 @@ export function TransactionList({
   isAdding,
   isNew,
   isMatched,
+  isFiltered,
+  allowReorder = true,
   dateFormat,
   hideFraction,
   renderEmpty,
@@ -599,52 +606,173 @@ export function TransactionList({
     [onApplyFilter],
   );
 
+  const onReorder = useCallback(
+    async (id: string, dropPos: DropPosition, targetId: string) => {
+      // Don't support reorder while sorted by non-date field or filtered
+      if ((sortField && sortField !== 'date') || isFiltered) {
+        return;
+      }
+
+      if (id === targetId) {
+        return;
+      }
+
+      // Find the transaction being dragged to determine if it's a child
+      const draggedTrans = allTransactions.find(t => t.id === id);
+      if (!draggedTrans) {
+        return;
+      }
+
+      // Child transaction reordering: siblings only
+      if (draggedTrans.is_child && draggedTrans.parent_id) {
+        const siblings = allTransactions.filter(
+          t => t.parent_id === draggedTrans.parent_id && !isPreviewId(t.id),
+        );
+
+        const targetTransIdx = siblings.findIndex(t => t.id === targetId);
+        if (targetTransIdx === -1) {
+          return; // Target is not a sibling
+        }
+
+        // Convert dropPos to API targetId for child reordering
+        // API places transaction AFTER targetId; null means move to top of siblings
+        let apiTargetId: string | null;
+        if (dropPos === 'after') {
+          apiTargetId = targetId;
+        } else {
+          const aboveIdx = targetTransIdx - 1;
+          apiTargetId = aboveIdx >= 0 ? siblings[aboveIdx].id : null;
+        }
+
+        await send('transaction-move', {
+          id,
+          accountId: draggedTrans.account,
+          targetId: apiTargetId,
+        });
+        onRefetch();
+        return;
+      }
+
+      // Build a reorderable list that excludes child and preview/scheduled transactions
+      const reorderable = allTransactions.filter(
+        t => !t.is_child && !isPreviewId(t.id),
+      );
+
+      const transIdx = reorderable.findIndex(t => t.id === id);
+      const targetTransIdx = reorderable.findIndex(t => t.id === targetId);
+
+      if (transIdx === -1 || targetTransIdx === -1) {
+        return;
+      }
+
+      const trans = reorderable[transIdx];
+      const targetTrans = reorderable[targetTransIdx];
+      const isAscending = sortField === 'date' && ascDesc === 'asc';
+
+      // Validate drop position: same date or at a date boundary
+      let isValidDrop = targetTrans.date === trans.date;
+      if (!isValidDrop) {
+        const neighborIdx =
+          dropPos === 'before' ? targetTransIdx - 1 : targetTransIdx + 1;
+        const neighborTrans =
+          neighborIdx >= 0 && neighborIdx < reorderable.length
+            ? reorderable[neighborIdx]
+            : null;
+        isValidDrop = isValidBoundaryDrop(
+          dropPos,
+          targetTrans.date,
+          trans.date,
+          neighborTrans?.date ?? null,
+          isAscending,
+        );
+      }
+
+      if (!isValidDrop) {
+        return;
+      }
+
+      // Convert dropPos to API targetId
+      // API places transaction AFTER targetId; null means move to top
+      let apiTargetId: string | null;
+      if (dropPos === 'after') {
+        // Prevent inserting immediately after a split parent
+        if (targetTrans.is_parent) {
+          return;
+        }
+        apiTargetId = targetTrans.date === trans.date ? targetId : null;
+      } else {
+        const aboveIdx = targetTransIdx - 1;
+        const aboveTrans = aboveIdx >= 0 ? reorderable[aboveIdx] : null;
+        // For parent-level reordering, always anchor to parent transactions.
+        // Using a child id here makes the backend miss the target and append.
+        if (aboveTrans?.is_parent) {
+          apiTargetId = aboveTrans.date === trans.date ? aboveTrans.id : null;
+        } else {
+          apiTargetId =
+            aboveTrans && aboveTrans.date === trans.date ? aboveTrans.id : null;
+        }
+      }
+
+      await send('transaction-move', {
+        id,
+        accountId: trans.account,
+        targetId: apiTargetId,
+      });
+      onRefetch();
+    },
+    [sortField, ascDesc, isFiltered, allTransactions, onRefetch],
+  );
+
   return (
-    <TransactionTable
-      ref={tableRef}
-      transactions={allTransactions}
-      loadMoreTransactions={loadMoreTransactions}
-      accounts={accounts}
-      categoryGroups={categoryGroups}
-      payees={payees}
-      balances={balances}
-      showBalances={showBalances}
-      showReconciled={showReconciled}
-      showCleared={showCleared}
-      showAccount={showAccount}
-      showCategory
-      currentAccountId={account && account.id}
-      currentCategoryId={category && category.id}
-      isAdding={isAdding}
-      isNew={isNew}
-      isMatched={isMatched}
-      dateFormat={dateFormat}
-      hideFraction={hideFraction}
-      renderEmpty={renderEmpty}
-      onSave={onSave}
-      onApplyRules={onApplyRules}
-      onSplit={onSplit}
-      onCloseAddTransaction={onCloseAddTransaction}
-      onAdd={onAdd}
-      onAddSplit={onAddSplit}
-      onManagePayees={onManagePayees}
-      onCreatePayee={onCreatePayee}
-      style={{ backgroundColor: theme.tableBackground }}
-      onNavigateToTransferAccount={onNavigateToTransferAccount}
-      onNavigateToSchedule={onNavigateToSchedule}
-      onNotesTagClick={onNotesTagClick}
-      onSort={onSort}
-      sortField={sortField}
-      ascDesc={ascDesc}
-      onBatchDelete={onBatchDelete}
-      onBatchDuplicate={onBatchDuplicate}
-      onBatchLinkSchedule={onBatchLinkSchedule}
-      onBatchUnlinkSchedule={onBatchUnlinkSchedule}
-      onCreateRule={onCreateRule}
-      onScheduleAction={onScheduleAction}
-      onMakeAsNonSplitTransactions={onMakeAsNonSplitTransactions}
-      showSelection={showSelection}
-      allowSplitTransaction={allowSplitTransaction}
-    />
+    <ErrorBoundary FallbackComponent={FeatureErrorFallback}>
+      <TransactionTable
+        ref={tableRef}
+        transactions={allTransactions}
+        loadMoreTransactions={loadMoreTransactions}
+        accounts={accounts}
+        categoryGroups={categoryGroups}
+        payees={payees}
+        balances={balances}
+        showBalances={showBalances}
+        showReconciled={showReconciled}
+        showCleared={showCleared}
+        showAccount={showAccount}
+        showCategory
+        currentAccountId={account && account.id}
+        currentCategoryId={category && category.id}
+        isAdding={isAdding}
+        isNew={isNew}
+        isMatched={isMatched}
+        dateFormat={dateFormat}
+        hideFraction={hideFraction}
+        renderEmpty={renderEmpty}
+        onSave={onSave}
+        onApplyRules={onApplyRules}
+        onSplit={onSplit}
+        onCloseAddTransaction={onCloseAddTransaction}
+        onAdd={onAdd}
+        onAddSplit={onAddSplit}
+        onManagePayees={onManagePayees}
+        onCreatePayee={onCreatePayee}
+        style={{ backgroundColor: theme.tableBackground }}
+        onNavigateToTransferAccount={onNavigateToTransferAccount}
+        onNavigateToSchedule={onNavigateToSchedule}
+        onNotesTagClick={onNotesTagClick}
+        onSort={onSort}
+        sortField={sortField}
+        ascDesc={ascDesc}
+        isFiltered={isFiltered}
+        onReorder={allowReorder ? onReorder : undefined}
+        onBatchDelete={onBatchDelete}
+        onBatchDuplicate={onBatchDuplicate}
+        onBatchLinkSchedule={onBatchLinkSchedule}
+        onBatchUnlinkSchedule={onBatchUnlinkSchedule}
+        onCreateRule={onCreateRule}
+        onScheduleAction={onScheduleAction}
+        onMakeAsNonSplitTransactions={onMakeAsNonSplitTransactions}
+        showSelection={showSelection}
+        allowSplitTransaction={allowSplitTransaction}
+      />
+    </ErrorBoundary>
   );
 }

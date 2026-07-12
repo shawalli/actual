@@ -4,13 +4,8 @@ import * as d from 'date-fns';
 import type { Locale } from 'date-fns';
 import { t } from 'i18next';
 
-import type {
-  PayeeEntity,
-  RecurConfig,
-  ScheduleEntity,
-} from 'loot-core/types/models';
-
-import { Condition } from '../server/rules';
+import { Condition } from '#server/rules';
+import type { PayeeEntity, RecurConfig, ScheduleEntity } from '#types/models';
 
 import * as monthUtils from './months';
 import { q } from './query';
@@ -60,6 +55,16 @@ export function getStatusLabel(status: string) {
   }
 }
 
+/**
+ * Builds a query to check if each schedule already has a matching transaction.
+ *
+ * The date lower-bound varies:
+ * - `dateCond.op === 'is'` (one-time): exact `next_date`, no lookback.
+ * - `posts_transaction` (auto-posted recurring): exact `next_date`, since
+ *   auto-posted dates are always precise. A lookback here would cause
+ *   yesterday's transaction to falsely match today's occurrence.
+ * - Otherwise (manual recurring): 2-day lookback to catch early payments.
+ */
 export function getHasTransactionsQuery(schedules) {
   const filters = schedules.map(schedule => {
     const dateCond = schedule._conditions?.find(c => c.field === 'date');
@@ -70,7 +75,9 @@ export function getHasTransactionsQuery(schedules) {
           $gte:
             dateCond && dateCond.op === 'is'
               ? schedule.next_date
-              : monthUtils.subDays(schedule.next_date, 2),
+              : schedule.posts_transaction
+                ? schedule.next_date
+                : monthUtils.subDays(schedule.next_date, 2),
         },
       },
     };
@@ -258,16 +265,20 @@ export function getRecurringDescription(
   return `${desc}${suffix}`.trim();
 }
 
+type ScheduleRuleOptions = IRuleOptions & {
+  frequency: string;
+  interval?: number;
+  byHourOfDay?: number[];
+};
+
 export function recurConfigToRSchedule(config) {
-  const base: IRuleOptions = {
+  const base: ScheduleRuleOptions = {
     start: monthUtils.parseDate(config.start),
-    // @ts-expect-error: issues with https://gitlab.com/john.carroll.p/rschedule/-/issues/86
     frequency: config.frequency.toUpperCase(),
     byHourOfDay: [12],
   };
 
   if (config.interval) {
-    // @ts-expect-error: issues with https://gitlab.com/john.carroll.p/rschedule/-/issues/86
     base.interval = config.interval;
   }
 
@@ -346,7 +357,7 @@ export function getNextDate(
   dateCond,
   start = new Date(monthUtils.currentDay()),
   noSkipWeekend = false,
-) {
+): string | null {
   start = d.startOfDay(start);
 
   const cond = new Condition(dateCond.op, 'date', dateCond.value, null);
@@ -496,14 +507,16 @@ export function computeSchedulePreviewTransactions(
 
   const today = d.startOfDay(monthUtils.parseDate(monthUtils.currentDay()));
 
-  const upcomingPeriodEnd = d.startOfDay(
-    monthUtils.parseDate(
-      monthUtils.addDays(today, getUpcomingDays(upcomingLength)),
-    ),
-  );
-
   return schedulesForPreview
     .flatMap(schedule => {
+      const effectiveUpcomingLength =
+        schedule.custom_upcoming_length ?? upcomingLength;
+      const upcomingPeriodEnd = d.startOfDay(
+        monthUtils.parseDate(
+          monthUtils.addDays(today, getUpcomingDays(effectiveUpcomingLength)),
+        ),
+      );
+
       const { date: dateConditions } = extractScheduleConds(
         schedule._conditions,
       );
@@ -516,6 +529,10 @@ export function computeSchedulePreviewTransactions(
       if (isRecurring) {
         while (day <= upcomingPeriodEnd) {
           const nextDate = getNextDate(dateConditions, day);
+
+          if (nextDate === null) {
+            break;
+          }
 
           if (
             d.startOfDay(monthUtils.parseDate(nextDate)) > upcomingPeriodEnd

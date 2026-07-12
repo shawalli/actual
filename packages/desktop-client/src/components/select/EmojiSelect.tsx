@@ -16,12 +16,11 @@ import { Popover } from '@actual-app/components/popover';
 import { styles } from '@actual-app/components/styles';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+import { shortcodeToNative as shortcodeToNativeUtil } from '@actual-app/core/shared/emoji';
 import data from '@emoji-mart/data';
 import type { EmojiMartData } from '@emoji-mart/data';
 
-import { shortcodeToNative as shortcodeToNativeUtil } from 'loot-core/shared/emoji';
-
-import { useProperFocus } from '@desktop-client/hooks/useProperFocus';
+import { useProperFocus } from '#hooks/useProperFocus';
 
 const emojiData = data as EmojiMartData;
 
@@ -582,7 +581,12 @@ export function EmojiSelect({
         const emojiElement = emojiGridRef.current.querySelector(
           `[data-emoji-index="${newIndex}"]`,
         ) as HTMLElement | null;
-        emojiElement?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        if (typeof emojiElement?.scrollIntoView === 'function') {
+          emojiElement.scrollIntoView({
+            block: 'nearest',
+            behavior: 'smooth',
+          });
+        }
       }
     },
     [

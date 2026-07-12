@@ -4,9 +4,13 @@ export type FeatureFlag =
   | 'actionTemplating'
   | 'formulaMode'
   | 'currency'
-  | 'crossoverReport'
+  | 'ageOfMoneyReport'
+  | 'balanceForecastReport'
   | 'customThemes'
-  | 'budgetAnalysisReport';
+  | 'budgetAnalysisReport'
+  | 'payeeLocations'
+  | 'enableBanking'
+  | 'sankeyReport';
 
 /**
  * Cross-device preferences. These sync across devices when they are changed.
@@ -31,6 +35,7 @@ export type SyncedPrefs = Partial<
     | `hide-reconciled-${string}`
     // TODO: pull from src/components/modals/ImportTransactions.js
     | `parse-date-${string}-${'csv' | 'qif'}`
+    | `import-reimport-deleted-${string}`
     | `csv-mappings-${string}`
     | `csv-delimiter-${string}`
     | `csv-skip-start-lines-${string}`
@@ -45,6 +50,9 @@ export type SyncedPrefs = Partial<
     | `sync-import-transactions-${string}`
     | `sync-update-dates-${string}`
     | `ofx-fallback-missing-payee-${string}`
+    | `ofx-swap-payee-memo-${string}`
+    | `qif-swap-payee-memo-${string}`
+    | `camt-swap-payee-memo-${string}`
     | `flip-amount-${string}-${'csv' | 'qif'}`
     | `flags.${FeatureFlag}`
     | `learn-categories`,
@@ -88,13 +96,7 @@ export type LocalPrefs = Partial<{
   'mobile.showSpentColumn': boolean;
 }>;
 
-export type Theme =
-  | 'light'
-  | 'dark'
-  | 'auto'
-  | 'midnight'
-  | 'development'
-  | string;
+export type Theme = 'light' | 'dark' | 'auto' | 'midnight' | string;
 export type DarkTheme = 'dark' | 'midnight';
 
 // GlobalPrefs are the parsed global-store.json values
@@ -117,7 +119,9 @@ export type GlobalPrefs = Partial<{
       colors: Record<string, string>;
     }
   >; // Complete plugin theme metadata
-  installedCustomTheme?: string; // JSON string of installed custom theme
+  installedCustomLightTheme?: string; // JSON of InstalledTheme for light custom theme (also used as single custom theme in non-auto mode)
+  installedCustomDarkTheme?: string; // JSON of InstalledTheme for auto-mode dark custom theme
+  customCssOverride?: string; // User-pasted CSS override applied on top of any theme. Empty string or undefined means no override.
   documentDir: string; // Electron only
   serverSelfSignedCert: string; // Electron only
   syncServerConfig?: {
@@ -146,7 +150,9 @@ export type GlobalPrefsJson = Partial<{
   language?: GlobalPrefs['language'];
   theme?: GlobalPrefs['theme'];
   'preferred-dark-theme'?: GlobalPrefs['preferredDarkTheme'];
-  'installed-custom-theme'?: GlobalPrefs['installedCustomTheme'];
+  'installed-custom-theme'?: GlobalPrefs['installedCustomLightTheme'];
+  'installed-custom-dark-theme'?: GlobalPrefs['installedCustomDarkTheme'];
+  'custom-css-override'?: GlobalPrefs['customCssOverride'];
   plugins?: string; // "true" or "false"
   'plugin-theme'?: string; // JSON string of complete plugin theme (current selected plugin theme)
   'server-self-signed-cert'?: GlobalPrefs['serverSelfSignedCert'];

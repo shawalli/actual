@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
-import { logger } from '../platform/server/log';
-import type { TransactionEntity } from '../types/models';
+import { logger } from '#platform/server/log';
+import type { TransactionEntity } from '#types/models';
 
 import { applyChanges, diffItems, last } from './util';
 
@@ -45,11 +45,13 @@ export function makeChild<T extends GenericTransactionEntity>(
     account: parent.account,
     date: parent.date,
     cleared: parent.cleared != null ? parent.cleared : null,
-    reconciled: 'reconciled' in data ? data.reconciled : parent.reconciled,
+    reconciled: parent.reconciled != null ? parent.reconciled : null,
     starting_balance_flag:
       parent.starting_balance_flag != null
         ? parent.starting_balance_flag
         : null,
+    sort_order:
+      'sort_order' in data ? data.sort_order : (parent.sort_order ?? null),
     is_child: true,
     parent_id: parent.id,
     error: null,
@@ -65,7 +67,7 @@ function makeNonChild<T extends GenericTransactionEntity>(
     ...data,
     cleared: parent.cleared != null ? parent.cleared : null,
     reconciled: parent.reconciled != null ? parent.reconciled : null,
-    sort_order: parent.sort_order || null,
+    sort_order: parent.sort_order ?? null,
     starting_balance_flag: null,
     is_child: false,
     parent_id: null,
@@ -260,7 +262,8 @@ export function updateTransaction(
 ) {
   return replaceTransactions(transactions, transaction.id, trans => {
     if (trans.is_parent) {
-      const parent = trans.id === transaction.id ? transaction : trans;
+      const parent =
+        trans.id === transaction.id ? { ...trans, ...transaction } : trans;
       const originalSubtransactions =
         parent.subtransactions ?? trans.subtransactions;
       const sub = originalSubtransactions?.map(t => {

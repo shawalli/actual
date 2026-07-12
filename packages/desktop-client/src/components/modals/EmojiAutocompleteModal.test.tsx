@@ -2,12 +2,12 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 
+import { TestProviders } from '#mocks';
+
 import { EmojiAutocompleteModal } from './EmojiAutocompleteModal';
 
-import { TestProviders } from '@desktop-client/mocks';
-
 // Mock EmojiSelect so the test focuses on the modal shell, not the picker
-vi.mock('@desktop-client/components/select/EmojiSelect', () => ({
+vi.mock('#components/select/EmojiSelect', () => ({
   EmojiSelect: ({ onSelect }: { onSelect: (emoji: string | null) => void }) => (
     <button data-testid="mock-emoji-select" onClick={() => onSelect('🔵')}>
       Select Emoji

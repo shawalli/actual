@@ -1,7 +1,7 @@
 // @ts-strict-ignore
 import { t } from 'i18next';
 
-import type { FieldValueTypes, RuleConditionOp } from '../types/models';
+import type { FieldValueTypes, RuleConditionOp } from '#types/models';
 
 // For now, this info is duplicated from the backend. Figure out how
 // to share it later.
@@ -38,6 +38,7 @@ const TYPE_INFO = {
       'doesNotContain',
       'notOneOf',
       'hasTags',
+      'hasAnyTag',
       'isSet',
       'isNotSet',
     ],
@@ -65,21 +66,27 @@ type FieldInfoConstraint = Record<
 const FIELD_INFO = {
   imported_payee: {
     type: 'string',
-    disallowedOps: new Set(['hasTags']),
+    disallowedOps: new Set(['hasTags', 'hasAnyTag', 'isSet', 'isNotSet']),
   },
-  payee: { type: 'id', disallowedOps: new Set(['onBudget', 'offBudget']) },
+  payee: {
+    type: 'id',
+    disallowedOps: new Set(['onBudget', 'offBudget', 'isSet', 'isNotSet']),
+  },
   payee_name: { type: 'string' },
   date: { type: 'date' },
-  notes: { type: 'string', disallowedOps: new Set(['oneOf', 'notOneOf']) },
+  notes: {
+    type: 'string',
+    disallowedOps: new Set(['oneOf', 'notOneOf', 'isSet', 'isNotSet']),
+  },
   amount: { type: 'number' },
   category: {
     type: 'id',
-    disallowedOps: new Set(['onBudget', 'offBudget']),
+    disallowedOps: new Set(['onBudget', 'offBudget', 'isSet', 'isNotSet']),
     internalOps: new Set(['and']),
   },
   category_group: {
     type: 'id',
-    disallowedOps: new Set(['onBudget', 'offBudget']),
+    disallowedOps: new Set(['onBudget', 'offBudget', 'isSet', 'isNotSet']),
     internalOps: new Set(['and']),
   },
   account: { type: 'id' },
@@ -97,6 +104,7 @@ const FIELD_INFO = {
       'notOneOf',
       'doesNotContain',
       'hasTags',
+      'hasAnyTag',
     ]),
   },
 } as const satisfies FieldInfoConstraint;
@@ -131,10 +139,11 @@ export function getValidOps(field: keyof FieldValueTypes): RuleConditionOp[] {
   );
 }
 
-export function getAllocationMethods() {
+export function getAllocationMethods(hasFormulaMode = false) {
   return {
     'fixed-amount': t('a fixed amount'),
     'fixed-percent': t('a fixed percent of the remainder'),
+    ...(hasFormulaMode && { formula: t('based on a formula') }),
     remainder: t('an equal portion of the remainder'),
   };
 }
@@ -195,6 +204,10 @@ export function friendlyOp(op, type?) {
       return t('is');
     case 'isNot':
       return t('is not');
+    case 'isSet':
+      return t('set');
+    case 'isNotSet':
+      return t('not set');
     case 'isapprox':
       return t('is approx');
     case 'isbetween':
@@ -202,11 +215,9 @@ export function friendlyOp(op, type?) {
     case 'contains':
       return t('contains');
     case 'hasTags':
-      return t('has tags');
-    case 'isSet':
-      return t('is set');
-    case 'isNotSet':
-      return t('is not set');
+      return t('has all tags');
+    case 'hasAnyTag':
+      return t('has any tag');
     case 'matches':
       return t('matches');
     case 'doesNotContain':

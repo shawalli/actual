@@ -6,16 +6,17 @@ import type {
   APIPayeeEntity,
   APIScheduleEntity,
   APITagEntity,
-} from 'loot-core/server/api-models';
-import type { Query } from 'loot-core/shared/query';
-import type { Handlers } from 'loot-core/types/handlers';
+} from '@actual-app/core/server/api-models';
+import { lib } from '@actual-app/core/server/main';
+import type { Query } from '@actual-app/core/shared/query';
+import type { ImportTransactionsOpts } from '@actual-app/core/types/api-handlers';
+import type { Handlers } from '@actual-app/core/types/handlers';
 import type {
   ImportTransactionEntity,
+  NoteEntity,
   RuleEntity,
   TransactionEntity,
-} from 'loot-core/types/models';
-
-import * as injected from './injected';
+} from '@actual-app/core/types/models';
 
 export { q } from './app/query';
 
@@ -23,7 +24,7 @@ function send<K extends keyof Handlers, T extends Handlers[K]>(
   name: K,
   args?: Parameters<T>[0],
 ): Promise<Awaited<ReturnType<T>>> {
-  return injected.send(name, args);
+  return lib.send(name, args);
 }
 
 export async function runImport(
@@ -126,11 +127,6 @@ export function addTransactions(
   });
 }
 
-export type ImportTransactionsOpts = {
-  defaultCleared?: boolean;
-  dryRun?: boolean;
-};
-
 export function importTransactions(
   accountId: APIAccountEntity['id'],
   transactions: ImportTransactionEntity[],
@@ -208,8 +204,8 @@ export function getAccountBalance(id: APIAccountEntity['id'], cutoff?: Date) {
   return send('api/account-balance', { id, cutoff });
 }
 
-export function getCategoryGroups() {
-  return send('api/category-groups-get');
+export function getCategoryGroups(options: { hidden?: boolean } = {}) {
+  return send('api/category-groups-get', options);
 }
 
 export function createCategoryGroup(group: Omit<APICategoryGroupEntity, 'id'>) {
@@ -230,8 +226,8 @@ export function deleteCategoryGroup(
   return send('api/category-group-delete', { id, transferCategoryId });
 }
 
-export function getCategories() {
-  return send('api/categories-get', { grouped: false });
+export function getCategories(options: { hidden?: boolean } = {}) {
+  return send('api/categories-get', { grouped: false, ...options });
 }
 
 export function createCategory(category: Omit<APICategoryEntity, 'id'>) {
@@ -250,6 +246,14 @@ export function deleteCategory(
   transferCategoryId?: APICategoryEntity['id'],
 ) {
   return send('api/category-delete', { id, transferCategoryId });
+}
+
+export function getNote(id: NoteEntity['id']) {
+  return send('api/note-get', { id });
+}
+
+export function updateNote(id: NoteEntity['id'], note: NoteEntity['note']) {
+  return send('api/note-update', { id, note });
 }
 
 export function getCommonPayees() {

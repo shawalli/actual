@@ -1,0 +1,17 @@
+# .codexrules configuration
+shell_execution_strategy:
+  preferred_wrapper: "rtk"
+  allowed_commands:
+    - "rtk git status"
+    - "rtk ls"
+    - "rtk find"
+    - "rtk grep"
+    - "rtk pytest"
+    - "rtk docker"
+  
+  # Bypass RTK for shell built-ins or environment changes
+  bypass_commands:
+    - "cd"
+    - "export"
+    - "npm"
+    - "npx"

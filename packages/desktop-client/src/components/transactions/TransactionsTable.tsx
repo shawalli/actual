@@ -51,9 +51,12 @@ import { memoizeOne } from '@actual-app/core/shared/memoize';
 import * as monthUtils from '@actual-app/core/shared/months';
 import { q } from '@actual-app/core/shared/query';
 import {
+  addGiftCardSplitTransaction,
   addSplitTransaction,
   deleteTransaction,
+  GIFT_CARD_CATEGORY_ID,
   groupTransaction,
+  hasGiftCardChild,
   isPreviewId,
   isTemporaryId,
   makeEmptySplitSubtransactions,
@@ -956,6 +959,7 @@ type TransactionProps = {
   ) => void;
   onMakeAsNonSplitTransactions?: (ids: TransactionEntity['id'][]) => void;
   onSplit: (id: TransactionEntity['id']) => void;
+  onAddGiftCardSplit: (id: TransactionEntity['id']) => void;
   onToggleSplit: (id: TransactionEntity['id']) => void;
   onCreatePayee: (name: string) => Promise<null | PayeeEntity['id']>;
   onManagePayees: (id: PayeeEntity['id'] | undefined) => void;
@@ -963,6 +967,7 @@ type TransactionProps = {
   onNavigateToSchedule: (id: ScheduleEntity['id']) => void;
   onNotesTagClick: (tag: string) => void;
   splitError?: ReactNode;
+  splitErrorMinWidth?: CSSProperties['minWidth'];
   listContainerRef?: RefObject<HTMLDivElement>;
   showSelection?: boolean;
   allowSplitTransaction?: boolean;
@@ -1016,6 +1021,7 @@ const Transaction = memo(function Transaction({
   onScheduleAction,
   onMakeAsNonSplitTransactions,
   onSplit,
+  onAddGiftCardSplit,
   onManagePayees,
   onCreatePayee,
   onToggleSplit,
@@ -1023,6 +1029,7 @@ const Transaction = memo(function Transaction({
   onNavigateToSchedule,
   onNotesTagClick,
   splitError,
+  splitErrorMinWidth = 375,
   listContainerRef,
   showSelection,
   allowSplitTransaction,
@@ -1052,6 +1059,7 @@ const Transaction = memo(function Transaction({
     serializeTransaction(originalTransaction, showZeroInDeposit),
   );
   const isPreview = isPreviewId(transaction.id);
+  const isGiftCardChild = !!transaction.is_child && !!transaction.isGiftCard;
 
   if (
     originalTransaction !== prevTransaction ||
@@ -1160,6 +1168,10 @@ const Transaction = memo(function Transaction({
   };
 
   const onUpdateAfterConfirm: TransactionUpdateFunction = (name, value) => {
+    if (isGiftCardChild && (name === 'debit' || name === 'credit')) {
+      return;
+    }
+
     const newTransaction = { ...transaction, [name]: value };
 
     // Don't change the note to an empty string if it's null (since they are both rendered the same)
@@ -1248,6 +1260,22 @@ const Transaction = memo(function Transaction({
   const account = accounts && accountId && getAccountsById(accounts)[accountId];
 
   const isChild = transaction.is_child;
+  const splitParent = isParent
+    ? transaction
+    : allTransactions?.find(t => t.id === transaction.parent_id);
+  const splitSubtransactions = isParent
+    ? (subtransactions ?? [])
+    : (allTransactions?.filter(t => t.parent_id === transaction.parent_id) ??
+      []);
+  const showGiftCardOption =
+    allowSplitTransaction &&
+    !isPreview &&
+    ((!isParent && !isChild) ||
+      (splitParent &&
+        !hasGiftCardChild({
+          ...splitParent,
+          subtransactions: splitSubtransactions,
+        })));
   const transferAcct =
     isTemporaryId(id) && payee?.transfer_acct
       ? getAccountsById(accounts)[payee.transfer_acct]
@@ -1303,6 +1331,7 @@ const Transaction = memo(function Transaction({
   const allowRowDrag =
     canDrag &&
     !isPreview &&
+    !isGiftCardChild &&
     !isOnlyTransactionOnDate &&
     (!editing || focusedField === 'select' || focusedField === 'cleared');
   const { dragRef, dragProps } = useDrag<TransactionEntity>({
@@ -1342,6 +1371,7 @@ const Transaction = memo(function Transaction({
     if (draggedParentId) {
       // Only allow drops between siblings (same parent)
       if (!isChildTransaction || draggedParentId !== parentId) return false;
+      if (transaction.isGiftCard && dropPos === 'before') return false;
       return dropPos != null;
     }
 
@@ -1377,6 +1407,7 @@ const Transaction = memo(function Transaction({
     sortField,
     isParent,
     dropPos,
+    transaction.isGiftCard,
     transaction.date,
     ascDesc,
     prevRowDate,
@@ -1542,7 +1573,7 @@ const Transaction = memo(function Transaction({
             style={{
               width: 'max-content',
               maxWidth: 'none',
-              minWidth: 375,
+              minWidth: splitErrorMinWidth,
               padding: 5,
             }}
             shouldFlip={false}
@@ -1881,7 +1912,9 @@ const Transaction = memo(function Transaction({
             value={categoryId}
             formatter={value =>
               value
-                ? (getCategoriesById(categoryGroups)[value]?.name ?? '')
+                ? value === GIFT_CARD_CATEGORY_ID
+                  ? t('Income')
+                  : (getCategoriesById(categoryGroups)[value]?.name ?? '')
                 : transaction.id
                   ? t('Categorize')
                   : ''
@@ -1901,6 +1934,8 @@ const Transaction = memo(function Transaction({
             onUpdate={async value => {
               if (value === 'split') {
                 onSplit(transaction.id);
+              } else if (value === 'gift-card') {
+                onAddGiftCardSplit(transaction.id);
               } else {
                 onUpdate('category', value);
               }
@@ -1927,6 +1962,13 @@ const Transaction = memo(function Transaction({
                   showSplitOption={
                     !isChild && !isParent && allowSplitTransaction
                   }
+                  showGiftCardOption={showGiftCardOption}
+                  giftCardLabel={
+                    isTemporaryId(id) && !isChild && !isParent
+                      ? t('Gift Card Transaction')
+                      : undefined
+                  }
+                  showGiftCardFirst={!!isChild && showGiftCardOption}
                   shouldSaveFromKey={shouldSaveFromKey}
                   inputProps={{ onBlur, onKeyDown, style: inputStyle }}
                   onUpdate={onUpdate}
@@ -1961,7 +2003,10 @@ const Transaction = memo(function Transaction({
           }}
           inputProps={{
             value: debit === '' && credit === '' ? amountToCurrency(0) : debit,
-            onUpdate: onUpdate.bind(null, 'debit'),
+            readOnly: isGiftCardChild,
+            onUpdate: isGiftCardChild
+              ? undefined
+              : onUpdate.bind(null, 'debit'),
             'data-1p-ignore': true,
           }}
           privacyFilter={{
@@ -1992,7 +2037,10 @@ const Transaction = memo(function Transaction({
           }}
           inputProps={{
             value: credit,
-            onUpdate: onUpdate.bind(null, 'credit'),
+            readOnly: isGiftCardChild,
+            onUpdate: isGiftCardChild
+              ? undefined
+              : onUpdate.bind(null, 'credit'),
             'data-1p-ignore': true,
           }}
           privacyFilter={{
@@ -2240,6 +2288,46 @@ function TransactionError({
   }
 }
 
+function GiftCardTransactionToolbar({
+  onCancel,
+  onAddSplit,
+  style,
+}: {
+  onCancel: () => void;
+  onAddSplit: () => void;
+  style?: CSSProperties;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0 5px',
+        gap: 5,
+        ...style,
+      }}
+      data-testid="gift-card-transaction-toolbar"
+    >
+      <Button
+        style={{ padding: '4px 10px' }}
+        onPress={onCancel}
+        data-testid="cancel-button"
+      >
+        <Trans>Cancel</Trans>
+      </Button>
+      <Button
+        variant="primary"
+        style={{ padding: '4px 10px' }}
+        onPress={onAddSplit}
+        data-testid="add-split-button"
+      >
+        <Trans>Add Split</Trans>
+      </Button>
+    </View>
+  );
+}
+
 type NewTransactionProps = {
   accounts: AccountEntity[];
   categoryGroups: CategoryGroupEntity[];
@@ -2256,6 +2344,7 @@ type NewTransactionProps = {
   onDelete: (id: TransactionEntity['id']) => void;
   onDistributeRemainder: (id: TransactionEntity['id']) => void;
   onEdit: (id: TransactionEntity['id'], field: string) => void;
+  onAddGiftCardSplit: (id: TransactionEntity['id']) => void;
   onManagePayees: (id: PayeeEntity['id'] | undefined) => void;
   onNavigateToSchedule: (id: ScheduleEntity['id']) => void;
   onNavigateToTransferAccount: (id: AccountEntity['id']) => void;
@@ -2299,6 +2388,7 @@ function NewTransaction({
   onAdd,
   onAddAndClose,
   onAddSplit,
+  onAddGiftCardSplit,
   onDistributeRemainder,
   onManagePayees,
   onCreatePayee,
@@ -2314,6 +2404,10 @@ function NewTransaction({
   const childTransactions = transactions.filter(
     t => t.parent_id === transactions[0].id,
   );
+  const hasGiftCardSplit = hasGiftCardChild({
+    ...transactions[0],
+    subtransactions: childTransactions,
+  });
 
   const addButtonRef = useRef(null);
   useProperFocus(addButtonRef, focusedField === 'add');
@@ -2346,6 +2440,7 @@ function NewTransaction({
         <Transaction
           key={transaction.id}
           index={index}
+          allTransactions={transactions}
           editing={editingTransaction === transaction.id}
           transaction={transaction}
           subtransactions={transaction.is_parent ? childTransactions : null}
@@ -2366,6 +2461,7 @@ function NewTransaction({
           onEdit={onEdit}
           onSave={onSave}
           onSplit={onSplit}
+          onAddGiftCardSplit={onAddGiftCardSplit}
           onToggleSplit={onToggleSplit}
           onDelete={onDelete}
           onManagePayees={onManagePayees}
@@ -2387,10 +2483,11 @@ function NewTransaction({
           justifyContent: 'flex-end',
           marginTop: 6,
           marginRight: 20,
+          gap: 10,
         }}
       >
         <Button
-          style={{ marginRight: 10, padding: '4px 10px' }}
+          style={{ padding: '4px 10px' }}
           onPress={() => onClose()}
           data-testid="cancel-button"
           ref={cancelButtonRef}
@@ -2407,15 +2504,27 @@ function NewTransaction({
             }
           />
         ) : (
-          <Button
-            variant="primary"
-            style={{ padding: '4px 10px' }}
-            onPress={handleAddClick}
-            data-testid="add-button"
-            ref={addButtonRef}
-          >
-            <Trans>Add</Trans>
-          </Button>
+          <>
+            <Button
+              variant="primary"
+              style={{ padding: '4px 10px' }}
+              onPress={handleAddClick}
+              data-testid="add-button"
+              ref={addButtonRef}
+            >
+              <Trans>Add</Trans>
+            </Button>
+            {hasGiftCardSplit && (
+              <Button
+                variant="primary"
+                style={{ padding: '4px 10px' }}
+                onPress={() => onAddSplit(transactions[0].id)}
+                data-testid="add-split-button"
+              >
+                <Trans>Add Split</Trans>
+              </Button>
+            )}
+          </>
         )}
       </View>
     </View>
@@ -2463,6 +2572,7 @@ type TransactionTableInnerProps = {
     field: string,
   ) => Promise<TransactionEntity>;
   onSplit: (id: TransactionEntity['id']) => void;
+  onAddGiftCardSplit: (id: TransactionEntity['id']) => void;
   onAddSplit: (id: TransactionEntity['id']) => void;
   onCloseAddTransaction: () => void;
   onAdd: (transactions: TransactionEntity[]) => void;
@@ -2618,6 +2728,45 @@ function TransactionTableInner({
     const childTransactions = trans.is_parent
       ? props.transactionsByParent[trans.id]
       : null;
+    const splitParent = parent || (trans.is_parent ? trans : null);
+    const splitSubtransactions = splitParent
+      ? (props.transactionsByParent[splitParent.id] ?? [])
+      : [];
+    const focusedTransactionId = tableNavigator.editingId;
+    const focusedTransaction = focusedTransactionId
+      ? props.transactionMap.get(focusedTransactionId)
+      : null;
+    const isFocusedParentTransaction =
+      focusedTransaction?.id === splitParent?.id;
+    const isFocusedChildTransaction =
+      focusedTransaction?.parent_id === splitParent?.id;
+    const isGiftCardToolbarField = isFocusedParentTransaction
+      ? ['account', 'payee', 'notes', 'debit', 'credit'].includes(
+          tableNavigator.focusedField,
+        )
+      : isFocusedChildTransaction
+        ? ['account', 'payee', 'notes', 'category', 'debit', 'credit'].includes(
+            tableNavigator.focusedField,
+          )
+        : false;
+    const isSplitGroupFocused =
+      !!splitParent &&
+      !!focusedTransaction &&
+      (isFocusedParentTransaction || isFocusedChildTransaction);
+    const hasGiftCardSplit =
+      !!splitParent &&
+      hasGiftCardChild({
+        ...splitParent,
+        subtransactions: splitSubtransactions,
+      });
+    const showGiftCardToolbar =
+      !hasSplitError &&
+      expanded &&
+      hasGiftCardSplit &&
+      isSplitGroupFocused &&
+      isGiftCardToolbarField &&
+      (trans.is_parent || trans.is_child) &&
+      isLastChild(transactions, index);
 
     // Get sibling count for child transactions (used for drag/drop)
     const siblingCount =
@@ -2683,6 +2832,7 @@ function TransactionTableInner({
         onScheduleAction={props.onScheduleAction}
         onMakeAsNonSplitTransactions={props.onMakeAsNonSplitTransactions}
         onSplit={props.onSplit}
+        onAddGiftCardSplit={props.onAddGiftCardSplit}
         onManagePayees={props.onManagePayees}
         onCreatePayee={props.onCreatePayee}
         onToggleSplit={props.onToggleSplit}
@@ -2690,7 +2840,7 @@ function TransactionTableInner({
         onNavigateToSchedule={onNavigateToSchedule}
         onNotesTagClick={onNotesTagClick}
         splitError={
-          hasSplitError && (
+          hasSplitError ? (
             <TransactionError
               error={error}
               isDeposit={!!isChildDeposit}
@@ -2699,8 +2849,14 @@ function TransactionTableInner({
                 props.onDistributeRemainder(trans.id)
               }
             />
-          )
+          ) : showGiftCardToolbar ? (
+            <GiftCardTransactionToolbar
+              onCancel={() => tableNavigator.onEdit(null)}
+              onAddSplit={() => props.onAddSplit(splitParent.id)}
+            />
+          ) : null
         }
+        splitErrorMinWidth={showGiftCardToolbar ? 0 : undefined}
         listContainerRef={listContainerRef}
         showSelection={showSelection}
         allowSplitTransaction={allowSplitTransaction}
@@ -2771,6 +2927,7 @@ function TransactionTableInner({
               onAddSplit={props.onAddSplit}
               onToggleSplit={props.onToggleSplit}
               onSplit={props.onSplit}
+              onAddGiftCardSplit={props.onAddGiftCardSplit}
               onEdit={newNavigator.onEdit}
               onSave={props.onSave}
               onDelete={props.onDelete}
@@ -2858,6 +3015,7 @@ export type TransactionTableProps = {
     field: string | null,
   ) => Promise<TransactionEntity>;
   onSplit: (id: TransactionEntity['id']) => TransactionEntity['id'];
+  onAddGiftCardSplit: (id: TransactionEntity['id']) => TransactionEntity['id'];
   onAddSplit: (id: TransactionEntity['id']) => TransactionEntity['id'];
   onCloseAddTransaction: () => void;
   onAdd: (transactions: TransactionEntity[]) => void;
@@ -3452,6 +3610,7 @@ export const TransactionTable = forwardRef(
     }, [onSplitProp, splitsExpandedDispatch]);
 
     const { onAddSplit: onAddSplitProp } = props;
+    const { onAddGiftCardSplit: onAddGiftCardSplitProp } = props;
 
     const onAddSplit = useCallback(
       (id: TransactionEntity['id']) => {
@@ -3477,6 +3636,47 @@ export const TransactionTable = forwardRef(
         }
       },
       [onAddSplitProp],
+    );
+
+    const onAddGiftCardSplit = useCallback(
+      (id: TransactionEntity['id']) => {
+        const {
+          tableNavigator,
+          newNavigator,
+          newTransactions: newTrans,
+        } = latestState.current;
+
+        if (isTemporaryId(id)) {
+          const transaction = newTrans.find(t => t.id === id);
+          const wasSplit = !!transaction?.is_parent || !!transaction?.is_child;
+          const { data, diff } = addGiftCardSplitTransaction(
+            newTrans,
+            id,
+            getGiftCardCategoryId(props.categoryGroups),
+          );
+          setNewTransactions(data);
+
+          if (!wasSplit) {
+            const normalSplit = diff.added.find(t => !t.isGiftCard);
+            newNavigator.onEdit(
+              normalSplit?.id ?? diff.added[0]?.id,
+              latestState.current.newNavigator.focusedField,
+            );
+          }
+        } else {
+          const transaction = latestState.current.transactions.find(
+            t => t.id === id,
+          );
+          const wasSplit = !!transaction?.is_parent || !!transaction?.is_child;
+          const newId = onAddGiftCardSplitProp(id);
+
+          if (transaction && !wasSplit) {
+            splitsExpandedDispatch({ type: 'open-split', id: transaction.id });
+            tableNavigator.onEdit(newId, tableNavigator.focusedField);
+          }
+        }
+      },
+      [onAddGiftCardSplitProp, props.categoryGroups, splitsExpandedDispatch],
     );
 
     const onDistributeRemainder = useCallback(
@@ -3655,6 +3855,7 @@ export const TransactionTable = forwardRef(
             onScheduleAction={onScheduleAction}
             onMakeAsNonSplitTransactions={onMakeAsNonSplitTransactions}
             onSplit={onSplit}
+            onAddGiftCardSplit={onAddGiftCardSplit}
             onCheckNewEnter={onCheckNewEnter}
             onCheckEnter={onCheckEnter}
             onAddTemporary={onAddTemporary}
@@ -3696,3 +3897,14 @@ const getCategoriesById = memoizeOne(
     return res;
   },
 );
+
+function getGiftCardCategoryId(categoryGroups: CategoryGroupEntity[]) {
+  const incomeCategories =
+    categoryGroups.find(group => group.is_income)?.categories ?? [];
+
+  return (
+    incomeCategories.find(
+      category => !category.hidden && category.name.toLowerCase() === 'income',
+    )?.id ?? incomeCategories.find(category => !category.hidden)?.id
+  );
+}

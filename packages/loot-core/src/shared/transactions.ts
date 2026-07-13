@@ -111,6 +111,19 @@ export function makeEmptySplitSubtransactions(
   ];
 }
 
+export function makeGiftCardSplitSubtransactions(
+  parent: TransactionEntity,
+  giftCardCategory: TransactionEntity['category'] = GIFT_CARD_CATEGORY_ID,
+): TransactionEntity[] {
+  return [
+    makeGiftCardChild(parent, {
+      category: giftCardCategory,
+      sort_order: -1,
+    }),
+    makeChild(parent, { amount: parent.amount, sort_order: -2 }),
+  ];
+}
+
 function makeNonChild<T extends GenericTransactionEntity>(
   parent: T,
   data: object,
@@ -149,6 +162,7 @@ export function recalculateGiftCardSplit(
           ? {
               ...t,
               isGiftCard: true,
+              category: t.category || GIFT_CARD_CATEGORY_ID,
               notes: GIFT_CARD_NOTES,
               amount: giftCardAmount,
             }
@@ -340,6 +354,52 @@ export function addSplitTransaction(
       }),
     );
     return trans;
+  });
+}
+
+export function addGiftCardSplitTransaction(
+  transactions: readonly TransactionEntity[],
+  id: string,
+  giftCardCategory: TransactionEntity['category'] = GIFT_CARD_CATEGORY_ID,
+) {
+  return replaceTransactions(transactions, id, trans => {
+    if (!trans.is_parent) {
+      return recalculateSplit({
+        ...trans,
+        is_parent: true,
+        payee: null,
+        error: null,
+        subtransactions: makeGiftCardSplitSubtransactions(
+          trans,
+          giftCardCategory,
+        ),
+      });
+    }
+
+    if (hasGiftCardChild(trans)) {
+      return trans;
+    }
+
+    const selectedChild = trans.subtransactions?.find(t => t.id === id);
+    const firstSubtransaction = trans.subtransactions?.[0];
+    const giftCardChild = selectedChild
+      ? makeGiftCardChild(trans, {
+          ...selectedChild,
+          category: giftCardCategory,
+        })
+      : makeGiftCardChild(trans, {
+          category: giftCardCategory,
+          sort_order: num(firstSubtransaction?.sort_order) + 1,
+        });
+    const subtransactions = [
+      giftCardChild,
+      ...(trans.subtransactions?.filter(t => t.id !== giftCardChild.id) ?? []),
+    ];
+
+    return recalculateSplit({
+      ...trans,
+      subtransactions,
+    });
   });
 }
 

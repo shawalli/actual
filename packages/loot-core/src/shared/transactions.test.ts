@@ -361,6 +361,36 @@ describe('Transactions', () => {
     ]);
   });
 
+  test('deleting the gift-card child exits gift-card mode', () => {
+    const transactions = [
+      ...makeSplitTransaction({ id: 't1', amount: -2 }, [
+        { id: 't2', amount: 1, isGiftCard: true },
+        { id: 't3', amount: -3 },
+      ]),
+    ];
+
+    const { data, diff } = deleteTransaction(transactions, 't2');
+
+    expect(data).toEqual([
+      expect.objectContaining({
+        id: 't1',
+        is_parent: true,
+        error: splitError(1),
+      }),
+      expect.objectContaining({
+        id: 't3',
+        amount: -3,
+        parent_id: 't1',
+      }),
+    ]);
+    expect(data.some(t => t.isGiftCard)).toBe(false);
+    expect(diff).toEqual({
+      added: [],
+      deleted: [expect.objectContaining({ id: 't2' })],
+      updated: [expect.objectContaining({ id: 't1', error: splitError(1) })],
+    });
+  });
+
   test('adding a split transaction works', () => {
     const transactions = [
       makeTransaction({ amount: 2001 }),

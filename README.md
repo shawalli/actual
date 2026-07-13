@@ -12,7 +12,14 @@ This project is a soft fork of actualbudget/actual ("the root project"). It cont
 
 ### Unique Features
 
-- Transaction flags - short-lived flags that can further organize and isolate transactions. Useful for things like balancing a budget, finding a missing transaction, managing submissions for reimbursements to your company, healthcare savings account, etc. Transaction flags will be first class transaction fields, with support for bulk-editing, filtering, and rules/schedules.
+- **Transaction Flags** - Short-lived flags that can further organize and isolate transactions. Useful for things like balancing a budget, finding a missing transaction, managing submissions for reimbursements to your company, healthcare savings account, etc. Transaction flags are a first class transaction fields, with support for:
+  - bulk-editing
+  - filtering
+  - split-transactions
+  - rules/schedules (coming soon)
+  - mobile support (coming soon)
+
+- **Gift-Card Split Transactions** - Special split-transaction type that simplifies the process of using gift cards. When selected, creates a split transaction where the first split contains the gift card, categorized as Income. Every time a split transaction is added with a payment/deposit, the gift-card split transaction updates its payment/deposit to offset the new difference. This process works both for spending from a gift card and returning money to a gift card (e.g. returning an item bought with a gift card.) The gift-card logic enables gift cards to be treated like just-in-time income, so that users do not need to manage long-lived accounts for gift cards.
 
 ### Versioning
 

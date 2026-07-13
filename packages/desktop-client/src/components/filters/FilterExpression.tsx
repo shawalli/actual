@@ -9,10 +9,10 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import { shortcodeToNative } from '@actual-app/core/shared/emoji';
-import { friendlyOp, mapField } from '@actual-app/core/shared/rules';
 import type { RuleConditionEntity } from '@actual-app/core/types/models';
 
 import { Value } from '#components/rules/Value';
+import { friendlyOp, mapField } from '#util/rule';
 
 import { FilterEditor } from './FiltersMenu';
 import { subfieldFromFilter } from './subfieldFromFilter';
@@ -87,33 +87,30 @@ export function FilterExpression<T extends RuleConditionEntity>({
               <Text>{friendlyOp(op, null)}</Text>{' '}
               {!['onbudget', 'offbudget', 'isset', 'isnotset'].includes(
                 op?.toLocaleLowerCase(),
-              ) && (
-                <>
-                  {field === 'flag' &&
-                  ['is', 'isnot'].includes(op?.toLocaleLowerCase()) &&
-                  value &&
-                  typeof value === 'string' ? (
-                    <span title={value}>
-                      {value.startsWith(':') && value.endsWith(':')
-                        ? shortcodeToNative(value)
-                        : value}
-                    </span>
-                  ) : (
-                    <Value
-                      value={value}
-                      field={field}
-                      inline
-                      valueIsRaw={
-                        op === 'contains' ||
-                        op === 'matches' ||
-                        op === 'doesNotContain' ||
-                        op === 'hasTags' ||
-                        op === 'hasAnyTag'
-                      }
-                    />
-                  )}
-                </>
-              )}
+              ) &&
+                (field === 'flag' &&
+                ['is', 'isnot'].includes(op?.toLocaleLowerCase()) &&
+                value &&
+                typeof value === 'string' ? (
+                  <span title={value}>
+                    {value.startsWith(':') && value.endsWith(':')
+                      ? shortcodeToNative(value)
+                      : value}
+                  </span>
+                ) : (
+                  <Value
+                    value={value}
+                    field={field}
+                    inline
+                    valueIsRaw={
+                      op === 'contains' ||
+                      op === 'matches' ||
+                      op === 'doesNotContain' ||
+                      op === 'hasTags' ||
+                      op === 'hasAnyTag'
+                    }
+                  />
+                ))}
             </>
           )}
         </div>

@@ -1,4 +1,5 @@
-import React from 'react';
+import { createElement } from 'react';
+import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 
 import { send } from '@actual-app/core/platform/client/connection';
@@ -7,6 +8,7 @@ import { act, renderHook } from '@testing-library/react';
 import { vi } from 'vitest';
 
 import { configureTestAppStore, createTestQueryClient } from '#mocks';
+import type { Modal } from '#modals/modalsSlice';
 import { aqlQuery } from '#queries/aqlQuery';
 
 import { useTransactionBatchActions } from './useTransactionBatchActions';
@@ -26,11 +28,15 @@ vi.mock('react-i18next', () => ({
 const mockSend = vi.mocked(send);
 const mockAqlQuery = vi.mocked(aqlQuery);
 
+function makeQueryResult<T>(data: T) {
+  return { data, dependencies: [] };
+}
+
 function mockNonReconciledBatchEditQueries(transactions: TransactionEntity[]) {
   mockAqlQuery
-    .mockResolvedValueOnce({ data: transactions })
-    .mockResolvedValueOnce({ data: [] })
-    .mockResolvedValueOnce({ data: transactions });
+    .mockResolvedValueOnce(makeQueryResult(transactions))
+    .mockResolvedValueOnce(makeQueryResult([]))
+    .mockResolvedValueOnce(makeQueryResult(transactions));
 }
 
 function makeTransaction(
@@ -56,11 +62,18 @@ function makeTransaction(
 function renderBatchActionsHook() {
   const queryClient = createTestQueryClient();
   const store = configureTestAppStore({ queryClient });
-  const wrapper = ({ children }: { children: React.ReactNode }) =>
-    React.createElement(Provider, { store }, children);
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(Provider, { store, children });
 
   const hook = renderHook(() => useTransactionBatchActions(), { wrapper });
   return { hook, store };
+}
+
+function expectModal<N extends Modal['name']>(
+  modal: Modal | undefined,
+  name: N,
+): asserts modal is Extract<Modal, { name: N }> {
+  expect(modal?.name).toBe(name);
 }
 
 describe('useTransactionBatchActions - flag bulk edit', () => {
@@ -130,10 +143,10 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     // Invoke the onSelect callback from the emoji-autocomplete modal
     const { modalStack } = store.getState().modals;
     const modal = modalStack[0];
-    expect(modal.name).toBe('emoji-autocomplete');
+    expectModal(modal, 'emoji-autocomplete');
 
     await act(async () => {
-      await modal.options.onSelect(':large_blue_circle:');
+      modal.options.onSelect(':large_blue_circle:');
     });
 
     expect(mockSend).toHaveBeenCalledWith(
@@ -166,7 +179,7 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
         }),
       ],
     } as Partial<TransactionEntity>);
-    mockAqlQuery.mockResolvedValue({ data: [parent] });
+    mockAqlQuery.mockResolvedValue(makeQueryResult([parent]));
 
     const { hook, store } = renderBatchActionsHook();
 
@@ -180,10 +193,10 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     // notes uses edit-field modal
     const { modalStack } = store.getState().modals;
     const modal = modalStack[0];
-    expect(modal.name).toBe('edit-field');
+    expectModal(modal, 'edit-field');
 
     await act(async () => {
-      await modal.options.onSubmit('notes', 'hello', 'replace');
+      modal.options.onSubmit('notes', 'hello', 'replace');
     });
 
     const changes = mockSend.mock.calls[0][1];
@@ -197,8 +210,8 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
   it('shows reconciled-transaction confirmation modal before the emoji picker', async () => {
     const tx = makeTransaction({ id: 'tx-1', reconciled: true });
     mockAqlQuery
-      .mockResolvedValueOnce({ data: [tx] })
-      .mockResolvedValueOnce({ data: [tx] });
+      .mockResolvedValueOnce(makeQueryResult([tx]))
+      .mockResolvedValueOnce(makeQueryResult([tx]));
 
     const { hook, store } = renderBatchActionsHook();
 
@@ -210,11 +223,12 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     });
 
     const { modalStack } = store.getState().modals;
-    expect(modalStack[0].name).toBe('confirm-transaction-edit');
+    const modal = modalStack[0];
+    expectModal(modal, 'confirm-transaction-edit');
 
     // After confirming, emoji-autocomplete should be pushed
     await act(async () => {
-      await modalStack[0].options.onConfirm();
+      modal.options.onConfirm();
     });
 
     const updatedStack = store.getState().modals.modalStack;

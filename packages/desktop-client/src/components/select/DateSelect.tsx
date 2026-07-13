@@ -138,8 +138,6 @@ const DatePicker = forwardRef<DatePickerForwardedRef, DatePickerProps>(
     const picker = useRef<Pikaday | null>(null);
     const mountPoint = useRef<HTMLDivElement | null>(null);
 
-    const onUpdateEffect = useEffectEvent(onUpdate);
-
     useImperativeHandle(
       ref,
       () => ({
@@ -170,11 +168,11 @@ const DatePicker = forwardRef<DatePickerForwardedRef, DatePickerProps>(
 
           if (newDate) {
             picker.current?.setDate(newDate, true);
-            onUpdateEffect?.(newDate);
+            onUpdate?.(newDate);
           }
         },
       }),
-      [],
+      [onUpdate],
     );
 
     const initPikaday = useEffectEvent(() => {
@@ -458,6 +456,7 @@ function DateSelectDesktop({
 }
 
 function DateSelectMobile(props: DateSelectProps) {
+  const { style: inputStyle, ...restInputProps } = props.inputProps ?? {};
   return (
     <InputField
       id={props.id}
@@ -466,8 +465,8 @@ function DateSelectMobile(props: DateSelectProps) {
       onChange={event => {
         props.onSelect(event.target.value);
       }}
-      style={{ height: 28 }}
-      {...props.inputProps}
+      style={{ height: 28, ...inputStyle }}
+      {...restInputProps}
     />
   );
 }

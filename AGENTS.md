@@ -48,9 +48,16 @@ yarn start:desktop
 - A release always happens from `fork/master` after the release or feature branch has already been merged there.
 - Sync releases do not get a GitHub Release. Feature releases may get a GitHub Release, but it is created manually after the tag is pushed.
 - The Fly.io image must be built only after the Git tag has been pushed and verified on GitHub.
+- Do not directly merge an upstream tag into a branch created from `fork/master`. This fork can have squash-style sync history, so direct tag merges can pick an old merge base and create excessive conflicts.
+- For upstream sync branches, create `release/vX.Y.Z` from `fork/master`, then apply the upstream range with `./scripts/cherry-pick-upstream-release.sh <previous-upstream-tag> <new-upstream-tag>`.
+- Never manually merge `yarn.lock` or `package-lock.json` from upstream. Keep lockfiles out of the cherry-picked diff and run `yarn install` from the repository root after the cherry-pick and non-lockfile conflicts are resolved.
+- For detailed agent instructions, use the repo-local skill at `.agents/skills/upstream-release-sync/SKILL.md`.
 
 ```bash
-# Sync upstream into fork/master, open the PR, then either tag only or do the full sync release
+# Apply upstream changes onto a release branch without PR creation
+./scripts/cherry-pick-upstream-release.sh vX.Y.W vX.Y.Z
+
+# Legacy PR-oriented sync helper
 ./scripts/sync-upstream.sh
 
 # Tag only
@@ -64,6 +71,25 @@ yarn start:desktop
 
 # After manually creating the GitHub Release for a feature tag, build the private Fly.io image
 ./scripts/flyio-build-image.sh --tag vX.Y.Z.N
+```
+
+### Fork-Only Dependency Metadata
+
+- If a new dependency is added for a fork-only feature, add a `forkMetadata.dependencies` entry in the same workspace `package.json` that owns the dependency.
+- Do not add `forkMetadata` entries for dependencies that come from upstream.
+- Keep the metadata concise: include `owner`, `reason`, `source`, and the upstream tag where the fork-only dependency was first carried through a sync.
+
+```json
+"forkMetadata": {
+  "dependencies": {
+    "@example/package": {
+      "owner": "fork",
+      "reason": "Fork-only feature description",
+      "source": "fork/master",
+      "upstreamTag": "vX.Y.Z"
+    }
+  }
+}
 ```
 
 ### ⚠️ CRITICAL REQUIREMENT: AI-Generated Commit Messages and PR Titles

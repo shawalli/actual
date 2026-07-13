@@ -27,10 +27,10 @@ beforeEach(async () => {
   await loadMappings();
 });
 
-async function getMatchingTransactions(conds) {
+async function getMatchingTransactions(conds, splits = 'inline') {
   const { filters } = conditionsToAQL(conds);
   const { data } = await aqlQuery(
-    q('transactions').filter({ $and: filters }).select('*'),
+    q('transactions').filter({ $and: filters }).select('*').options({ splits }),
   );
   return data;
 }
@@ -804,6 +804,92 @@ describe('Transaction rules', () => {
         { field: 'flag', op: 'isNot', value: ':large_blue_circle:' },
       ]);
       expect(transactions.map(t => t.id)).toEqual(['f4', 'f3', 'f2']);
+    });
+
+    test('grouped split transactions can be queried by parent or child flag', async () => {
+      await loadRules();
+      const account = await db.insertAccount({
+        name: 'split-flag-test-bank',
+      });
+
+      await db.insertTransaction({
+        id: 'split-parent-blue',
+        date: '2024-02-01',
+        account,
+        amount: 300,
+        is_parent: true,
+        flag: ':large_blue_circle:',
+      });
+      await db.insertTransaction({
+        id: 'split-child-orange',
+        date: '2024-02-01',
+        account,
+        amount: 100,
+        is_child: true,
+        parent_id: 'split-parent-blue',
+        flag: ':orange_circle:',
+      });
+      await db.insertTransaction({
+        id: 'split-child-empty',
+        date: '2024-02-01',
+        account,
+        amount: 200,
+        is_child: true,
+        parent_id: 'split-parent-blue',
+        flag: null,
+      });
+      await db.insertTransaction({
+        id: 'split-parent-empty',
+        date: '2024-02-02',
+        account,
+        amount: 400,
+        is_parent: true,
+        flag: null,
+      });
+      await db.insertTransaction({
+        id: 'split-child-green',
+        date: '2024-02-02',
+        account,
+        amount: 400,
+        is_child: true,
+        parent_id: 'split-parent-empty',
+        flag: ':green_circle:',
+      });
+
+      let transactions = await getMatchingTransactions(
+        [{ field: 'flag', op: 'is', value: ':orange_circle:' }],
+        'grouped',
+      );
+      expect(transactions.map(t => t.id)).toEqual(['split-parent-blue']);
+      expect(transactions[0].flag).toBe(':large_blue_circle:');
+      expect(transactions[0].subtransactions.map(t => t.id).sort()).toEqual([
+        'split-child-empty',
+        'split-child-orange',
+      ]);
+      expect(
+        transactions[0].subtransactions
+          .filter(t => !t._unmatched)
+          .map(t => t.id),
+      ).toEqual(['split-child-orange']);
+
+      transactions = await getMatchingTransactions(
+        [{ field: 'flag', op: 'is', value: ':large_blue_circle:' }],
+        'grouped',
+      );
+      expect(transactions.map(t => t.id)).toEqual(['split-parent-blue']);
+      expect(transactions[0]._unmatched).toBeUndefined();
+      expect(transactions[0].subtransactions.every(t => t._unmatched)).toBe(
+        true,
+      );
+
+      transactions = await getMatchingTransactions(
+        [{ field: 'flag', op: 'isSet', value: null }],
+        'grouped',
+      );
+      expect(transactions.map(t => t.id)).toEqual([
+        'split-parent-empty',
+        'split-parent-blue',
+      ]);
     });
   });
 });

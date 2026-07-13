@@ -281,6 +281,34 @@ test.describe('Transactions', () => {
           }),
         ).not.toHaveCount(0);
       });
+
+      test('filters by split child flag', async () => {
+        await accountPage.createSplitTransaction([
+          {
+            payee: 'Split Child Flagged',
+            debit: '30.00',
+            flag: ':large_blue_circle:',
+          },
+          {
+            category: 'General',
+            debit: '10.00',
+            flag: ':orange_circle:',
+          },
+          {
+            category: 'Food',
+            debit: '20.00',
+          },
+        ]);
+
+        await accountPage.filterByFlag('is', ':orange_circle:');
+
+        await expect(
+          accountPage.transactionTableRow.filter({
+            hasText: 'Split Child Flagged',
+          }),
+        ).not.toHaveCount(0);
+        await expect(accountPage.getNthTransaction(1).flag).toContainText('🟠');
+      });
     });
   });
 
@@ -338,6 +366,36 @@ test.describe('Transactions', () => {
     await expect(thirdTransaction.debit).toHaveText('111.11');
     await expect(thirdTransaction.credit).toHaveText('');
     await expect(page).toMatchThemeScreenshots();
+  });
+
+  test('creates and edits split transaction flags independently', async () => {
+    await accountPage.createSplitTransaction([
+      {
+        payee: 'Split Flag Store',
+        debit: '30.00',
+        flag: ':large_blue_circle:',
+      },
+      {
+        category: 'General',
+        debit: '10.00',
+        flag: ':orange_circle:',
+      },
+      {
+        category: 'Food',
+        debit: '20.00',
+      },
+    ]);
+
+    await expect(accountPage.getNthTransaction(0).flag).toContainText('🔵');
+    await expect(accountPage.getNthTransaction(1).flag).toContainText('🟠');
+    await expect(accountPage.getNthTransaction(2).flag).not.toContainText('🔵');
+    await expect(accountPage.getNthTransaction(2).flag).not.toContainText('🟠');
+
+    await accountPage.setTransactionFlag(2, ':green_circle:');
+
+    await expect(accountPage.getNthTransaction(0).flag).toContainText('🔵');
+    await expect(accountPage.getNthTransaction(1).flag).toContainText('🟠');
+    await expect(accountPage.getNthTransaction(2).flag).toContainText('🟢');
   });
 
   test('creates a transfer test transaction', async () => {

@@ -1,0 +1,47 @@
+version: '1'
+settings:
+  fail_fast: true
+
+rules:
+  # 1. Monorepo Universal Test Runner (Lage + Vitest)
+  - match: '^yarn test'
+    on_success:
+      return_value: '{"status": "success", "message": "All workspace unit and integration tests passed cleanly."}'
+    on_failure:
+      # Slices out Vitest stack traces, assertion errors, and explicit failures while skipping structural lage execution metrics
+      regex_filter: '(?:✕|FAIL|Error:|expected|received|Workspace).*$'
+      max_lines: 45
+
+  # 2. Workspace-Targeted Testing (e.g., yarn workspace @actual-app/core run test)
+  - match: '^yarn workspace @actual-app/.* test'
+    on_success:
+      return_value: '{"status": "success", "message": "Targeted workspace test suite passed cleanly."}'
+    on_failure:
+      regex_filter: '(?:✕|FAIL|Error:|expected|received).*$'
+      max_lines: 40
+
+  # 3. Global Code Linting (Oxlint + Oxfmt)
+  - match: '^yarn lint'
+    on_success:
+      return_value: '{"status": "success", "message": "Oxlint checking passed with zero syntax or stylistic errors."}'
+    on_failure:
+      # Isolates structural file paths and compiler/linter warnings
+      regex_filter: '(?:─|│|error|warning|packages/).*$'
+      max_lines: 30
+
+  # 4. Global Typecheck (tsgo + lage typecheck)
+  - match: '^yarn typecheck'
+    on_success:
+      return_value: '{"status": "success", "message": "TypeScript validation complete. No type errors found across workspaces."}'
+    on_failure:
+      # Strips out verbose compiler settings and grabs the specific files throwing TS flags
+      regex_filter: "(?:error TS\\d+|packages/|\\.ts).*$"
+      max_lines: 35
+
+  # 5. Production Build Process
+  - match: '^yarn build'
+    on_success:
+      return_value: '{"status": "success", "message": "Monorepo build successful. All artifacts compiled into lib-dist and dist targets."}'
+    on_failure:
+      regex_filter: '(?:Failed to compile|Error:|Type error:|RollupError).*$'
+      max_lines: 40

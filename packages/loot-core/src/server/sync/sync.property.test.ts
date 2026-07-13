@@ -51,6 +51,7 @@ const schema = {
   transactions: {
     isParent: 'integer',
     isChild: 'integer',
+    isGiftCard: 'integer',
     acct: 'text',
     category: 'text',
     amount: 'integer',

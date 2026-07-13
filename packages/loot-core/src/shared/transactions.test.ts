@@ -6,9 +6,13 @@ import type { TransactionEntity } from '#types/models';
 import {
   addSplitTransaction,
   deleteTransaction,
+  GIFT_CARD_CATEGORY_ID,
+  GIFT_CARD_NOTES,
+  hasGiftCardChild,
   makeAsNonChildTransactions,
   makeChild,
   makeEmptySplitSubtransactions,
+  makeGiftCardChild,
   splitTransaction,
   updateTransaction,
 } from './transactions';
@@ -171,6 +175,190 @@ describe('Transactions', () => {
 
     const children = data.filter(t => t.parent_id === 't1');
     expect(children.map(t => t.sort_order)).toEqual([-10, -20]);
+  });
+
+  test.each`
+    parentAmount | firstSpending | secondSpending | giftAmount
+    ${0}         | ${-2}         | ${-3}          | ${5}
+    ${-2}        | ${-2}         | ${-3}          | ${3}
+    ${-5}        | ${-2}         | ${-3}          | ${0}
+  `(
+    'recalculates a gift-card split for parent $parentAmount and spending splits',
+    ({ parentAmount, firstSpending, secondSpending, giftAmount }) => {
+      const transactions = [
+        ...makeSplitTransaction({ id: 't1', amount: parentAmount }, [
+          { id: 't3', amount: firstSpending },
+          { id: 't2', amount: 999, isGiftCard: true, notes: 'Changed' },
+          { id: 't4', amount: secondSpending },
+        ]),
+      ];
+
+      const { data, diff } = updateTransaction(
+        transactions,
+        makeTransaction({ id: 't4', amount: secondSpending }),
+      );
+
+      expect(data).toEqual([
+        expect.objectContaining({ id: 't1', error: null }),
+        expect.objectContaining({
+          id: 't2',
+          isGiftCard: true,
+          notes: GIFT_CARD_NOTES,
+          amount: giftAmount,
+        }),
+        expect.objectContaining({ id: 't3', amount: firstSpending }),
+        expect.objectContaining({ id: 't4', amount: secondSpending }),
+      ]);
+      expect(diff.updated).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 't1', error: null }),
+          expect.objectContaining({
+            id: 't2',
+            notes: GIFT_CARD_NOTES,
+            amount: giftAmount,
+          }),
+        ]),
+      );
+    },
+  );
+
+  test('editing sibling splits recalculates the gift-card amount', () => {
+    const transactions = [
+      ...makeSplitTransaction({ id: 't1', amount: -2 }, [
+        { id: 't2', amount: 3, isGiftCard: true },
+        { id: 't3', amount: -2 },
+        { id: 't4', amount: -3 },
+      ]),
+    ];
+
+    const { data, diff } = updateTransaction(
+      transactions,
+      makeTransaction({ id: 't4', amount: -4 }),
+    );
+
+    expect(data).toEqual([
+      expect.objectContaining({ id: 't1', error: null }),
+      expect.objectContaining({ id: 't2', amount: 4, isGiftCard: true }),
+      expect.objectContaining({ id: 't3', amount: -2 }),
+      expect.objectContaining({ id: 't4', amount: -4 }),
+    ]);
+    expect(diff.updated).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 't2', amount: 4 }),
+        expect.objectContaining({ id: 't4', amount: -4 }),
+      ]),
+    );
+  });
+
+  test('recalculates a return gift-card split in the opposite direction', () => {
+    const transactions = [
+      ...makeSplitTransaction({ id: 't1', amount: 5 }, [
+        { id: 't3', amount: 3 },
+        {
+          id: 't2',
+          amount: 0,
+          category: 'income-cat',
+          isGiftCard: true,
+        },
+      ]),
+    ];
+
+    const { data, diff } = updateTransaction(
+      transactions,
+      makeTransaction({ id: 't3', amount: 4 }),
+    );
+
+    expect(data).toEqual([
+      expect.objectContaining({ id: 't1', error: null }),
+      expect.objectContaining({
+        id: 't2',
+        amount: 1,
+        category: 'income-cat',
+        isGiftCard: true,
+      }),
+      expect.objectContaining({ id: 't3', amount: 4 }),
+    ]);
+    expect(diff.updated).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 't2', amount: 1 }),
+        expect.objectContaining({ id: 't3', amount: 4 }),
+      ]),
+    );
+  });
+
+  test('supports a gift-card outflow and category inflow on reversal splits', () => {
+    const transactions = [
+      ...makeSplitTransaction({ id: 't1', amount: 1 }, [
+        { id: 't3', amount: 4 },
+        { id: 't2', amount: -3, category: 'income-cat', isGiftCard: true },
+      ]),
+    ];
+
+    const { data } = updateTransaction(
+      transactions,
+      makeTransaction({ id: 't3', amount: 5 }),
+    );
+
+    expect(data).toEqual([
+      expect.objectContaining({ id: 't1', error: null }),
+      expect.objectContaining({
+        id: 't2',
+        amount: -4,
+        category: 'income-cat',
+        isGiftCard: true,
+      }),
+      expect.objectContaining({ id: 't3', amount: 5 }),
+    ]);
+  });
+
+  test('creates a gift-card child with durable defaults', () => {
+    const parent = makeTransaction({
+      id: 't1',
+      amount: -5,
+      account: 'account-id',
+      date: '2020-02-03',
+      payee: 'payee-id',
+    });
+
+    const child = makeGiftCardChild(parent);
+
+    expect(child).toEqual(
+      expect.objectContaining({
+        isGiftCard: true,
+        is_child: true,
+        parent_id: 't1',
+        notes: GIFT_CARD_NOTES,
+        category: GIFT_CARD_CATEGORY_ID,
+        account: 'account-id',
+        date: '2020-02-03',
+        payee: 'payee-id',
+      }),
+    );
+    expect(hasGiftCardChild({ ...parent, subtransactions: [child] })).toBe(
+      true,
+    );
+  });
+
+  test('splitting a normal transaction with a gift-card child derives the gift amount immediately', () => {
+    const transactions = [makeTransaction({ id: 't1', amount: -2 })];
+
+    const { data, diff } = splitTransaction(transactions, 't1', parent => [
+      makeGiftCardChild(parent),
+      makeChild(parent, { id: 't2', amount: -3 }),
+    ]);
+
+    expect(data).toEqual([
+      expect.objectContaining({ id: 't1', error: null }),
+      expect.objectContaining({
+        isGiftCard: true,
+        notes: GIFT_CARD_NOTES,
+        amount: 1,
+      }),
+      expect.objectContaining({ id: 't2', amount: -3 }),
+    ]);
+    expect(diff.updated).toEqual([
+      expect.objectContaining({ id: 't1', is_parent: true, error: null }),
+    ]);
   });
 
   test('adding a split transaction works', () => {

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
+import { shortcodeToNative } from '@actual-app/core/shared/emoji';
 import { getMonthYearFormat } from '@actual-app/core/shared/months';
 import { format as formatDate, parseISO } from 'date-fns';
 

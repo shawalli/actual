@@ -1035,7 +1035,7 @@ const functionCategoryTheme = EditorView.baseTheme({
 });
 
 // Syntax highlighting for Excel formulas
-export const excelFormulaHighlighting = syntaxHighlighting(
+export const excelFormulaHighlighting: Extension = syntaxHighlighting(
   HighlightStyle.define([
     { tag: tags.function(tags.variableName), color: '#795E26' }, // Generic functions in brown/gold
     // Other syntax elements
@@ -1057,7 +1057,7 @@ const functionCategoryThemeDark = EditorView.baseTheme({
 });
 
 // Dark theme syntax highlighting
-export const excelFormulaDarkHighlighting = syntaxHighlighting(
+export const excelFormulaDarkHighlighting: Extension = syntaxHighlighting(
   HighlightStyle.define([
     { tag: tags.function(tags.variableName), color: '#DCDCAA' }, // Generic functions in light yellow
     // Other syntax elements

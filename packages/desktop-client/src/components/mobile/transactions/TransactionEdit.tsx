@@ -1854,7 +1854,7 @@ function TransactionEditUnconnected({
         }
       }
     },
-    [dateFormat, transactions, isLocationGranted],
+    [dateFormat, isLocationGranted],
   );
 
   const onSave = useCallback(

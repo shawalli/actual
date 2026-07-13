@@ -87,33 +87,30 @@ export function FilterExpression<T extends RuleConditionEntity>({
               <Text>{friendlyOp(op, null)}</Text>{' '}
               {!['onbudget', 'offbudget', 'isset', 'isnotset'].includes(
                 op?.toLocaleLowerCase(),
-              ) && (
-                <>
-                  {field === 'flag' &&
-                  ['is', 'isnot'].includes(op?.toLocaleLowerCase()) &&
-                  value &&
-                  typeof value === 'string' ? (
-                    <span title={value}>
-                      {value.startsWith(':') && value.endsWith(':')
-                        ? shortcodeToNative(value)
-                        : value}
-                    </span>
-                  ) : (
-                    <Value
-                      value={value}
-                      field={field}
-                      inline
-                      valueIsRaw={
-                        op === 'contains' ||
-                        op === 'matches' ||
-                        op === 'doesNotContain' ||
-                        op === 'hasTags' ||
-                        op === 'hasAnyTag'
-                      }
-                    />
-                  )}
-                </>
-              )}
+              ) &&
+                (field === 'flag' &&
+                ['is', 'isnot'].includes(op?.toLocaleLowerCase()) &&
+                value &&
+                typeof value === 'string' ? (
+                  <span title={value}>
+                    {value.startsWith(':') && value.endsWith(':')
+                      ? shortcodeToNative(value)
+                      : value}
+                  </span>
+                ) : (
+                  <Value
+                    value={value}
+                    field={field}
+                    inline
+                    valueIsRaw={
+                      op === 'contains' ||
+                      op === 'matches' ||
+                      op === 'doesNotContain' ||
+                      op === 'hasTags' ||
+                      op === 'hasAnyTag'
+                    }
+                  />
+                ))}
             </>
           )}
         </div>

@@ -138,8 +138,6 @@ const DatePicker = forwardRef<DatePickerForwardedRef, DatePickerProps>(
     const picker = useRef<Pikaday | null>(null);
     const mountPoint = useRef<HTMLDivElement | null>(null);
 
-    const onUpdateEffect = useEffectEvent(onUpdate);
-
     useImperativeHandle(
       ref,
       () => ({
@@ -170,11 +168,11 @@ const DatePicker = forwardRef<DatePickerForwardedRef, DatePickerProps>(
 
           if (newDate) {
             picker.current?.setDate(newDate, true);
-            onUpdateEffect?.(newDate);
+            onUpdate?.(newDate);
           }
         },
       }),
-      [],
+      [onUpdate],
     );
 
     const initPikaday = useEffectEvent(() => {

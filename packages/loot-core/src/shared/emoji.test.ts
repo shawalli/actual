@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type * as EmojiModule from './emoji';
+
 vi.mock('@emoji-mart/data', () => ({
   default: {
     emojis: {
@@ -27,8 +29,8 @@ vi.mock('@emoji-mart/data', () => ({
   },
 }));
 
-let shortcodeToNative: (typeof import('./emoji'))['shortcodeToNative'];
-let resetCache: (typeof import('./emoji'))['__resetEmojiCache'];
+let shortcodeToNative: typeof EmojiModule.shortcodeToNative;
+let resetCache: typeof EmojiModule.__resetEmojiCache;
 
 describe('emojiUtils', () => {
   beforeEach(async () => {

@@ -613,6 +613,50 @@ describe('Transactions', () => {
     );
   });
 
+  test('split child flags can be edited independently from parent flags', async () => {
+    const [parent, firstChild] = generateTransaction(
+      {
+        account: accounts[0].id,
+        amount: 5000,
+        flag: ':100:',
+      },
+      3000,
+    );
+    const transactions = [
+      parent,
+      {
+        ...firstChild,
+        flag: null,
+      },
+    ];
+
+    const { container, getTransactions } = renderTransactions({
+      transactions,
+    });
+
+    await editField(container, 'flag', 1);
+    await waitFor(() => {
+      expect(screen.getByText('😀')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByText('😀').closest('button')!);
+
+    await waitFor(() => {
+      expect(getTransactions()[0].flag).toBe(':100:');
+      expect(getTransactions()[1].flag).toBe(':grinning:');
+    });
+
+    await editField(container, 'flag', 0);
+    await waitFor(() => {
+      expect(screen.getByText('Remove')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByText('Remove'));
+
+    await waitFor(() => {
+      expect(getTransactions()[0].flag).toBe('');
+      expect(getTransactions()[1].flag).toBe(':grinning:');
+    });
+  });
+
   test('keybindings enter/tab/alt should move around', async () => {
     const { container } = renderTransactions();
 

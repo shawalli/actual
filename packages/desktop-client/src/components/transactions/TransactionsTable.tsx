@@ -1393,6 +1393,78 @@ const Transaction = memo(function Transaction({
     dropPos && isValidDropTarget && !isBeingDragged,
   );
 
+  const flagCell = (
+    <CustomCell
+      name="flag"
+      width={45}
+      textAlign="center"
+      exposed={focusedField === 'flag'}
+      value={transaction.flag || undefined}
+      valueStyle={{
+        fontSize: transaction.flag ? '18px' : '14px',
+        color: transaction.flag ? theme.tableText : theme.tableTextSubdued,
+        opacity: transaction.flag ? 1 : 0.5,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+      style={
+        isChild
+          ? {
+              width: 45,
+              backgroundColor: theme.tableRowBackgroundHover,
+              border: 0, // known z-order issue, bottom border for parent transaction hidden
+            }
+          : undefined
+      }
+      onExpose={name => !isPreview && onEdit(id, name)}
+      onUpdate={value => {
+        onUpdate('flag', value);
+      }}
+      formatter={value => {
+        return shortcodeToNative(value);
+      }}
+      unexposedContent={({ value, formatter }) => {
+        const displayValue = value && formatter ? formatter(value) : null;
+        return (
+          <View
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: '100%',
+              height: '100%',
+            }}
+          >
+            {displayValue ? (
+              <span style={{ fontSize: '18px' }}>{displayValue}</span>
+            ) : (
+              <SvgFlag
+                style={{
+                  width: 14,
+                  height: 14,
+                  color: theme.tableTextSubdued,
+                  opacity: 1,
+                }}
+              />
+            )}
+          </View>
+        );
+      }}
+    >
+      {({ onBlur, onKeyDown, onSave, shouldSaveFromKey, inputStyle }) => (
+        <EmojiSelect
+          value={transaction.flag || null}
+          isOpen={focusedField === 'flag'}
+          shouldSaveFromKey={shouldSaveFromKey}
+          inputProps={{ onBlur, onKeyDown, style: inputStyle }}
+          onSelect={value => {
+            onSave(value ?? '');
+          }}
+        />
+      )}
+    </CustomCell>
+  );
+
   return (
     <View
       innerRef={dropRef}
@@ -1493,39 +1565,7 @@ const Transaction = memo(function Transaction({
           />
         )}
 
-        {isChild && (
-          <Field
-            /* Flag display for Child transaction */
-            name="flag"
-            width={45}
-            contentStyle={{
-              alignItems: 'center',
-              color: transaction.flag
-                ? theme.tableText
-                : theme.tableTextSubdued,
-              fontSize: transaction.flag ? '18px' : '14px',
-              opacity: transaction.flag ? 1 : 0.5,
-            }}
-            style={{
-              width: 45,
-              backgroundColor: theme.tableRowBackgroundHover,
-              border: 0, // known z-order issue, bottom border for parent transaction hidden
-            }}
-          >
-            {transaction.flag ? (
-              shortcodeToNative(transaction.flag)
-            ) : (
-              <SvgFlag
-                style={{
-                  width: 14,
-                  height: 14,
-                  color: theme.tableTextSubdued,
-                  opacity: 1,
-                }}
-              />
-            )}
-          </Field>
-        )}
+        {isChild && flagCell}
 
         {isChild && showAccount && (
           <Field
@@ -1623,70 +1663,7 @@ const Transaction = memo(function Transaction({
           </CustomCell>
         )}
 
-        {!isChild && (
-          <CustomCell
-            name="flag"
-            width={45}
-            textAlign="center"
-            exposed={focusedField === 'flag'}
-            value={transaction.flag || undefined}
-            valueStyle={{
-              fontSize: transaction.flag ? '18px' : '14px',
-              color: transaction.flag
-                ? theme.tableText
-                : theme.tableTextSubdued,
-              opacity: transaction.flag ? 1 : 0.5,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-            onExpose={name => !isPreview && onEdit(id, name)}
-            onUpdate={value => {
-              onUpdate('flag', value);
-            }}
-            formatter={value => {
-              return shortcodeToNative(value);
-            }}
-            unexposedContent={({ value, formatter }) => {
-              const displayValue = value && formatter ? formatter(value) : null;
-              return (
-                <View
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    width: '100%',
-                    height: '100%',
-                  }}
-                >
-                  {displayValue ? (
-                    <span style={{ fontSize: '18px' }}>{displayValue}</span>
-                  ) : (
-                    <SvgFlag
-                      style={{
-                        width: 14,
-                        height: 14,
-                        color: theme.tableTextSubdued,
-                        opacity: 1,
-                      }}
-                    />
-                  )}
-                </View>
-              );
-            }}
-          >
-            {({ onBlur, onKeyDown, onSave, shouldSaveFromKey, inputStyle }) => (
-              <EmojiSelect
-                value={transaction.flag || null}
-                isOpen={focusedField === 'flag'}
-                shouldSaveFromKey={shouldSaveFromKey}
-                inputProps={{ onBlur, onKeyDown, style: inputStyle }}
-                onSelect={value => {
-                  onSave(value ?? '');
-                }}
-              />
-            )}
-          </CustomCell>
-        )}
+        {!isChild && flagCell}
 
         {!isChild && showAccount && (
           <CustomCell

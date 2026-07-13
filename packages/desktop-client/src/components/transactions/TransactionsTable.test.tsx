@@ -576,6 +576,43 @@ describe('Transactions', () => {
     });
   });
 
+  test('transactions table shows split child flags', () => {
+    const [parent, firstChild, secondChild] = generateTransaction(
+      {
+        account: accounts[0].id,
+        amount: 5000,
+        flag: ':large_blue_circle:',
+      },
+      3000,
+    );
+    const transactions = [
+      parent,
+      {
+        ...firstChild,
+        flag: ':orange_circle:',
+      },
+      {
+        ...secondChild,
+        flag: null,
+      },
+    ];
+
+    const { container } = renderTransactions({
+      transactions,
+    });
+
+    expect(queryField(container, 'flag', 'div', 0).textContent).toBe(
+      shortcodeToNative(':large_blue_circle:'),
+    );
+    expect(queryField(container, 'flag', 'div', 1).textContent).toBe(
+      shortcodeToNative(':orange_circle:'),
+    );
+    expect(queryField(container, 'flag', 'div', 2).textContent).toBe('');
+    expect(queryField(container, 'flag', '', 2).querySelector('svg')).not.toBe(
+      null,
+    );
+  });
+
   test('keybindings enter/tab/alt should move around', async () => {
     const { container } = renderTransactions();
 

@@ -222,6 +222,77 @@ describe('Transactions', () => {
     ]);
   });
 
+  test('updating a split child flag preserves the parent flag', () => {
+    const transactions = [
+      ...makeSplitTransaction(
+        { id: 't1', amount: 2500, flag: ':large_blue_circle:' },
+        [{ id: 't2', amount: 2500 }],
+      ),
+    ];
+
+    const { data, diff } = updateTransaction(
+      transactions,
+      makeTransaction({
+        id: 't2',
+        amount: 2500,
+        flag: ':orange_circle:',
+      }),
+    );
+
+    expect(data).toEqual([
+      expect.objectContaining({
+        id: 't1',
+        flag: ':large_blue_circle:',
+      }),
+      expect.objectContaining({
+        id: 't2',
+        flag: ':orange_circle:',
+      }),
+    ]);
+    expect(diff).toEqual({
+      added: [],
+      deleted: [],
+      updated: [
+        { id: 't1', error: null },
+        { id: 't2', flag: ':orange_circle:' },
+      ],
+    });
+  });
+
+  test('updating a split parent flag preserves child flags', () => {
+    const transactions = [
+      ...makeSplitTransaction(
+        { id: 't1', amount: 2500, flag: ':large_blue_circle:' },
+        [{ id: 't2', amount: 2500, flag: ':orange_circle:' }],
+      ),
+    ];
+
+    const { data, diff } = updateTransaction(
+      transactions,
+      makeTransaction({
+        id: 't1',
+        amount: 2500,
+        flag: ':green_circle:',
+      }),
+    );
+
+    expect(data).toEqual([
+      expect.objectContaining({
+        id: 't1',
+        flag: ':green_circle:',
+      }),
+      expect.objectContaining({
+        id: 't2',
+        flag: ':orange_circle:',
+      }),
+    ]);
+    expect(diff).toEqual({
+      added: [],
+      deleted: [],
+      updated: [{ id: 't1', flag: ':green_circle:', error: null }],
+    });
+  });
+
   test('updating a split transaction works', () => {
     const transactions = [
       makeTransaction({ amount: 2001 }),

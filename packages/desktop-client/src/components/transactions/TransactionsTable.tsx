@@ -1483,10 +1483,10 @@ const Transaction = memo(function Transaction({
 
         {isChild && (
           <Field
-            /* Checkmark blank placeholder for Child transaction */
-            width={110}
+            /* Selection and date blank placeholder for Child transaction */
+            width={130}
             style={{
-              width: 110,
+              width: 130,
               backgroundColor: theme.tableRowBackgroundHover,
               border: 0, // known z-order issue, bottom border for parent transaction hidden
             }}
@@ -1495,14 +1495,36 @@ const Transaction = memo(function Transaction({
 
         {isChild && (
           <Field
-            /* Flag blank placeholder for Child transaction */
+            /* Flag display for Child transaction */
+            name="flag"
             width={45}
+            contentStyle={{
+              alignItems: 'center',
+              color: transaction.flag
+                ? theme.tableText
+                : theme.tableTextSubdued,
+              fontSize: transaction.flag ? '18px' : '14px',
+              opacity: transaction.flag ? 1 : 0.5,
+            }}
             style={{
               width: 45,
               backgroundColor: theme.tableRowBackgroundHover,
               border: 0, // known z-order issue, bottom border for parent transaction hidden
             }}
-          />
+          >
+            {transaction.flag ? (
+              shortcodeToNative(transaction.flag)
+            ) : (
+              <SvgFlag
+                style={{
+                  width: 14,
+                  height: 14,
+                  color: theme.tableTextSubdued,
+                  opacity: 1,
+                }}
+              />
+            )}
+          </Field>
         )}
 
         {isChild && showAccount && (
@@ -1512,18 +1534,6 @@ const Transaction = memo(function Transaction({
               flex: 1,
               backgroundColor: theme.tableRowBackgroundHover,
               border: 0,
-            }}
-          />
-        )}
-
-        {isChild && (
-          <Field
-            /* Spacing before checkmark for Child transaction */
-            width={20}
-            style={{
-              width: 20,
-              backgroundColor: theme.tableRowBackgroundHover,
-              border: 0, // known z-order issue, bottom border for parent transaction hidden
             }}
           />
         )}

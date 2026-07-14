@@ -21,6 +21,7 @@ import { Text } from '@actual-app/components/text';
 import { TextOneLine } from '@actual-app/components/text-one-line';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+import { shortcodeToNative } from '@actual-app/core/shared/emoji';
 import { isPreviewId } from '@actual-app/core/shared/transactions';
 import { integerToCurrency } from '@actual-app/core/shared/util';
 import type { IntegerAmount } from '@actual-app/core/shared/util';
@@ -68,6 +69,10 @@ const getScheduleIconStyle = ({ isPreview }: { isPreview: boolean }) => ({
   marginRight: 5,
   color: isPreview ? theme.pageTextLight : theme.menuItemText,
 });
+
+function getNativeFlag(flag: TransactionEntity['flag']) {
+  return flag ? shortcodeToNative(flag) : null;
+}
 
 type TransactionListItemProps = ListBoxItemRenderProps & {
   transaction?: TransactionEntity;
@@ -130,6 +135,7 @@ export function TransactionListItem({
     is_child: isChild,
     notes,
     forceUpcoming,
+    flag,
   } = transaction;
 
   const previewStatus = forceUpcoming ? 'upcoming' : categoryId;
@@ -146,6 +152,15 @@ export function TransactionListItem({
 
   const prettyCategory = specialCategory || categoryName;
   const textStyle = getTextStyle({ isPreview });
+  const nativeParentFlag = getNativeFlag(flag);
+  const nativeChildFlags =
+    transaction.subtransactions
+      ?.map(t => getNativeFlag(t.flag))
+      .filter(Boolean) ?? [];
+  const nativeFlags = [
+    ...(nativeParentFlag ? [{ emoji: nativeParentFlag, isChild: false }] : []),
+    ...nativeChildFlags.map(emoji => ({ emoji, isChild: true })),
+  ];
 
   return (
     <PressResponder {...mergeProps(pressProps, longPressProps)}>
@@ -245,6 +260,30 @@ export function TransactionListItem({
                       marginRight: 5,
                     }}
                   />
+                )}
+                {nativeFlags.length > 0 && (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginRight: 5,
+                    }}
+                  >
+                    {nativeFlags.map(({ emoji, isChild }, index) => (
+                      <Text
+                        key={`${emoji}-${index}`}
+                        style={{
+                          fontSize: 12,
+                          lineHeight: '12px',
+                          marginRight: index === nativeFlags.length - 1 ? 0 : 2,
+                          color: isChild ? theme.pageTextSubdued : undefined,
+                          opacity: isChild ? 0.7 : undefined,
+                        }}
+                      >
+                        {emoji}
+                      </Text>
+                    ))}
+                  </View>
                 )}
                 <TextOneLine
                   style={{

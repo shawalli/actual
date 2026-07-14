@@ -39,8 +39,6 @@ CREATE TABLE transactions
   (id TEXT PRIMARY KEY,
    isParent INTEGER DEFAULT 0,
    isChild INTEGER DEFAULT 0,
-   isGiftCard INTEGER DEFAULT 0,
-   flag TEXT,
    acct TEXT,
    category TEXT,
    amount INTEGER,

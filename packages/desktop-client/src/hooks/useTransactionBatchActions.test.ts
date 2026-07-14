@@ -116,7 +116,7 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     expect(modalStack.every(m => m.name !== 'edit-field')).toBe(true);
   });
 
-  it('sets the flag on the parent but not on child transactions', async () => {
+  it('sets the flag on explicitly selected parent and child transactions', async () => {
     // aqlQuery returns grouped: parent with one child in subtransactions
     const parent = makeTransaction({
       id: 'tx-parent',
@@ -156,16 +156,59 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     const changes = mockSend.mock.calls[0][1];
     const updated: TransactionEntity[] = changes.updated ?? [];
 
-    // Parent should have the new flag
     const updatedParent = updated.find(t => t.id === 'tx-parent');
     expect(updatedParent?.flag).toBe(':large_blue_circle:');
 
-    // Child may appear in updated (re-derived from parent), but must not
-    // have the new flag set directly — its flag stays at its prior value
-    const updatedChild = updated.find(t => t.id === 'tx-child');
-    if (updatedChild) {
-      expect(updatedChild.flag).not.toBe(':large_blue_circle:');
-    }
+    expect(
+      updated.some(
+        t => t.id === 'tx-child' && t.flag === ':large_blue_circle:',
+      ),
+    ).toBe(true);
+  });
+
+  it('does not edit fetched split children that were not explicitly selected', async () => {
+    const parent = makeTransaction({
+      id: 'tx-parent',
+      is_parent: true,
+      flag: null,
+      subtransactions: [
+        makeTransaction({
+          id: 'tx-child',
+          is_child: true,
+          flag: ':orange_circle:',
+        }),
+      ],
+    } as Partial<TransactionEntity>);
+    mockNonReconciledBatchEditQueries([parent]);
+
+    const { hook, store } = renderBatchActionsHook();
+
+    await act(async () => {
+      await hook.result.current.onBatchEdit({
+        name: 'flag',
+        ids: ['tx-parent'],
+      });
+    });
+
+    const { modalStack } = store.getState().modals;
+    const modal = modalStack[0];
+    expectModal(modal, 'emoji-autocomplete');
+
+    await act(async () => {
+      modal.options.onSelect(':large_blue_circle:');
+    });
+
+    const changes = mockSend.mock.calls[0][1];
+    const updated: TransactionEntity[] = changes.updated ?? [];
+
+    expect(updated.find(t => t.id === 'tx-parent')?.flag).toBe(
+      ':large_blue_circle:',
+    );
+    expect(
+      updated.some(
+        t => t.id === 'tx-child' && t.flag === ':large_blue_circle:',
+      ),
+    ).toBe(false);
   });
 
   it('does not skip child transactions when bulk-editing a non-flag field', async () => {

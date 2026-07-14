@@ -117,11 +117,6 @@ export function useTransactionBatchActions() {
           return;
         }
 
-        // Skip child transactions for flag edits - flags are set on parent only
-        if (name === 'flag' && trans.is_child) {
-          return;
-        }
-
         if (!idSet.has(trans.id)) {
           // Skip transactions which aren't actually selected, since the query
           // above also retrieves the siblings & parent of any selected splits.

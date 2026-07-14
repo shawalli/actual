@@ -1573,10 +1573,12 @@ const Transaction = memo(function Transaction({
             style={{
               width: 'max-content',
               maxWidth: 'none',
+              maxHeight: 'none !important',
               minWidth: splitErrorMinWidth,
+              overflow: 'visible',
               padding: 5,
             }}
-            shouldFlip={false}
+            shouldFlip
             placement="bottom end"
             UNSTABLE_portalContainer={listContainerRef.current}
           >

@@ -70,10 +70,6 @@ const getScheduleIconStyle = ({ isPreview }: { isPreview: boolean }) => ({
   color: isPreview ? theme.pageTextLight : theme.menuItemText,
 });
 
-function getNativeFlag(flag: TransactionEntity['flag']) {
-  return flag ? shortcodeToNative(flag) : null;
-}
-
 type TransactionListItemProps = ListBoxItemRenderProps & {
   transaction?: TransactionEntity;
   showRunningBalance?: boolean;
@@ -152,10 +148,10 @@ export function TransactionListItem({
 
   const prettyCategory = specialCategory || categoryName;
   const textStyle = getTextStyle({ isPreview });
-  const nativeParentFlag = getNativeFlag(flag);
+  const nativeParentFlag = shortcodeToNative(flag || null);
   const nativeChildFlags =
     transaction.subtransactions
-      ?.map(t => getNativeFlag(t.flag))
+      ?.map(t => shortcodeToNative(t.flag || null))
       .filter(Boolean) ?? [];
   const nativeFlags = [
     ...(nativeParentFlag ? [{ emoji: nativeParentFlag, isChild: false }] : []),

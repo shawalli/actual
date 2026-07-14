@@ -195,10 +195,6 @@ type MobileTransactionEditField =
   | 'notes'
   | 'flag';
 
-function getNativeFlag(flag: TransactionEntity['flag']) {
-  return flag ? shortcodeToNative(flag) : '';
-}
-
 type MobileFlagButtonProps = {
   flag: TransactionEntity['flag'];
   isDisabled?: boolean;
@@ -211,7 +207,7 @@ function MobileFlagButton({
   onPress,
 }: MobileFlagButtonProps) {
   const { t } = useTranslation();
-  const nativeFlag = getNativeFlag(flag);
+  const nativeFlag = shortcodeToNative(flag || null);
 
   return (
     <Button

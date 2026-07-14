@@ -30,31 +30,7 @@ import * as queries from '#queries';
 import { useDispatch } from '#redux';
 import * as bindings from '#spreadsheet/bindings';
 
-function getTransactionsWithSplitChildren(
-  transactions: ReadonlyArray<TransactionEntity>,
-) {
-  const childrenByParent = new Map<
-    TransactionEntity['id'],
-    TransactionEntity[]
-  >();
-
-  for (const transaction of transactions) {
-    if (transaction.is_child && transaction.parent_id) {
-      const children = childrenByParent.get(transaction.parent_id) ?? [];
-      children.push(transaction);
-      childrenByParent.set(transaction.parent_id, children);
-    }
-  }
-
-  return transactions
-    .filter(transaction => !transaction.is_child)
-    .map(transaction => ({
-      ...transaction,
-      ...(transaction.is_parent && {
-        subtransactions: childrenByParent.get(transaction.id) ?? [],
-      }),
-    }));
-}
+import { getTransactionsWithSplitChildren } from '../transactions/getTransactionsWithSplitChildren';
 
 export function AccountTransactions({
   account,

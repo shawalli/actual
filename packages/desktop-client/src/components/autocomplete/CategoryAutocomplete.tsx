@@ -12,6 +12,7 @@ import { Trans, useTranslation } from 'react-i18next';
 
 import { useResponsive } from '@actual-app/components/hooks/useResponsive';
 import { SvgSplit } from '@actual-app/components/icons/v0';
+import { SvgGift } from '@actual-app/components/icons/v1';
 import { styles } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { TextOneLine } from '@actual-app/components/text-one-line';
@@ -57,6 +58,7 @@ type CategoryListProps = {
   renderCategoryItem?: (
     props: ComponentPropsWithoutRef<typeof CategoryItem>,
   ) => ReactElement<typeof CategoryItem>;
+  showGiftCardFirst?: boolean;
   showHiddenItems?: boolean;
   showBalances?: boolean;
 };
@@ -69,15 +71,21 @@ function CategoryList({
   renderSplitTransactionButton = defaultRenderSplitTransactionButton,
   renderCategoryItemGroupHeader = defaultRenderCategoryItemGroupHeader,
   renderCategoryItem = defaultRenderCategoryItem,
+  showGiftCardFirst,
   showHiddenItems,
   showBalances,
 }: CategoryListProps) {
   const { t } = useTranslation();
-  const { splitTransaction, groupedCategories } = useMemo(() => {
+  const { giftCard, splitTransaction, groupedCategories } = useMemo(() => {
     return items.reduce(
       (acc, item, index) => {
         if (item.id === 'split') {
           acc.splitTransaction = { ...item, highlightedIndex: index };
+          return acc;
+        }
+
+        if (item.id === 'gift-card') {
+          acc.giftCard = { ...item, highlightedIndex: index };
           return acc;
         }
 
@@ -102,9 +110,15 @@ function CategoryList({
         return acc;
       },
       {
+        giftCard: null,
         splitTransaction: null,
         groupedCategories: [],
       } as {
+        giftCard:
+          | (CategoryAutocompleteItem & {
+              highlightedIndex: number;
+            })
+          | null;
         splitTransaction:
           | (CategoryAutocompleteItem & {
               highlightedIndex: number;
@@ -136,14 +150,37 @@ function CategoryList({
               ? getItemProps({ item: splitTransaction })
               : {};
             const { onClick, ...restSplitButtonProps } = splitButtonProps;
-            return renderSplitTransactionButton({
-              key: 'split',
-              ...restSplitButtonProps,
-              onClick,
-              highlighted:
-                splitTransaction.highlightedIndex === highlightedIndex,
-              embedded,
-            });
+            return (
+              <Fragment key="split">
+                {renderSplitTransactionButton({
+                  ...restSplitButtonProps,
+                  onClick,
+                  highlighted:
+                    splitTransaction.highlightedIndex === highlightedIndex,
+                  embedded,
+                  label: splitTransaction.name,
+                  style: showGiftCardFirst ? { order: -1 } : undefined,
+                })}
+              </Fragment>
+            );
+          })()}
+        {giftCard &&
+          (() => {
+            const giftCardButtonProps = getItemProps
+              ? getItemProps({ item: giftCard })
+              : {};
+            const { onClick, ...restGiftCardButtonProps } = giftCardButtonProps;
+            return (
+              <GiftCardButton
+                key="gift-card"
+                {...restGiftCardButtonProps}
+                onClick={onClick}
+                highlighted={giftCard.highlightedIndex === highlightedIndex}
+                embedded={embedded}
+                label={giftCard.name}
+                style={showGiftCardFirst ? { order: -2 } : undefined}
+              />
+            );
           })()}
         {groupedCategories.map(({ group, categories }) => {
           if (!group) {
@@ -191,6 +228,7 @@ type CategoryAutocompleteProps = ComponentProps<
   categoryGroups?: Array<CategoryGroupEntity>;
   showBalances?: boolean;
   showSplitOption?: boolean;
+  splitTransactionLabel?: string;
   renderSplitTransactionButton?: (
     props: ComponentPropsWithoutRef<typeof SplitTransactionButton>,
   ) => ReactElement<typeof SplitTransactionButton>;
@@ -200,6 +238,9 @@ type CategoryAutocompleteProps = ComponentProps<
   renderCategoryItem?: (
     props: ComponentPropsWithoutRef<typeof CategoryItem>,
   ) => ReactElement<typeof CategoryItem>;
+  showGiftCardOption?: boolean;
+  giftCardLabel?: string;
+  showGiftCardFirst?: boolean;
   showHiddenCategories?: boolean;
 };
 
@@ -212,7 +253,11 @@ export function CategoryAutocomplete({
   renderSplitTransactionButton,
   renderCategoryItemGroupHeader,
   renderCategoryItem,
+  showGiftCardOption,
+  giftCardLabel = 'Gift Card',
+  showGiftCardFirst = false,
   showHiddenCategories,
+  splitTransactionLabel = 'Split Transaction',
   ...props
 }: CategoryAutocompleteProps) {
   const { data: { grouped: defaultCategoryGroups } = { grouped: [] } } =
@@ -228,15 +273,30 @@ export function CategoryAutocomplete({
               group,
             })),
         ),
-      showSplitOption
-        ? [{ id: 'split', name: '' } as CategoryAutocompleteItem]
-        : [],
+      (showGiftCardFirst
+        ? [
+            ...(showGiftCardOption
+              ? [{ id: 'gift-card', name: giftCardLabel }]
+              : []),
+            ...(showSplitOption
+              ? [{ id: 'split', name: splitTransactionLabel }]
+              : []),
+          ]
+        : [
+            ...(showSplitOption
+              ? [{ id: 'split', name: splitTransactionLabel }]
+              : []),
+            ...(showGiftCardOption
+              ? [{ id: 'gift-card', name: giftCardLabel }]
+              : []),
+          ]) as CategoryAutocompleteItem[],
     );
 
     if (!showHiddenCategories) {
       return allSuggestions.filter(
         suggestion =>
           suggestion.id === 'split' ||
+          suggestion.id === 'gift-card' ||
           (!suggestion.hidden && !suggestion.group?.hidden),
       );
     }
@@ -245,7 +305,11 @@ export function CategoryAutocomplete({
   }, [
     categoryGroups,
     defaultCategoryGroups,
+    showGiftCardOption,
+    giftCardLabel,
+    showGiftCardFirst,
     showSplitOption,
+    splitTransactionLabel,
     showHiddenCategories,
   ]);
 
@@ -258,10 +322,25 @@ export function CategoryAutocomplete({
       getHighlightedIndex={suggestions => {
         if (suggestions.length === 0) {
           return null;
-        } else if (suggestions[0].id === 'split') {
-          // Highlight the first category since the split option is at index 0.
-          return suggestions.length > 1 ? 1 : null;
         }
+
+        const firstCategoryIndex = suggestions.findIndex(
+          suggestion =>
+            suggestion.id !== 'split' && suggestion.id !== 'gift-card',
+        );
+
+        if (firstCategoryIndex > 0) {
+          return firstCategoryIndex;
+        }
+
+        const firstNonSplitIndex = suggestions.findIndex(
+          suggestion => suggestion.id !== 'split',
+        );
+
+        if (firstNonSplitIndex > 0) {
+          return firstNonSplitIndex;
+        }
+
         return 0;
       }}
       filterSuggestions={filterCategorySuggestions}
@@ -275,6 +354,7 @@ export function CategoryAutocomplete({
           renderSplitTransactionButton={renderSplitTransactionButton}
           renderCategoryItemGroupHeader={renderCategoryItemGroupHeader}
           renderCategoryItem={renderCategoryItem}
+          showGiftCardFirst={showGiftCardFirst}
           showHiddenItems={showHiddenCategories}
           showBalances={showBalances}
         />
@@ -294,6 +374,7 @@ type SplitTransactionButtonProps = ComponentPropsWithoutRef<typeof View> & {
   Icon?: ComponentType<SVGProps<SVGElement>>;
   highlighted?: boolean;
   embedded?: boolean;
+  label?: ReactNode;
   style?: CSSProperties;
 };
 
@@ -301,6 +382,7 @@ function SplitTransactionButton({
   Icon,
   highlighted,
   embedded,
+  label,
   style,
   ...props
 }: SplitTransactionButtonProps) {
@@ -356,7 +438,7 @@ function SplitTransactionButton({
           <SvgSplit width={10} height={10} style={{ marginRight: 5 }} />
         )}
       </Text>
-      <Trans>Split Transaction</Trans>
+      {label ?? <Trans>Split Transaction</Trans>}
     </View>
   );
 }
@@ -365,6 +447,45 @@ function defaultRenderSplitTransactionButton(
   props: SplitTransactionButtonProps,
 ): ReactElement<typeof SplitTransactionButton> {
   return <SplitTransactionButton {...props} />;
+}
+
+function GiftCardButton({
+  highlighted,
+  embedded,
+  label,
+  style,
+  ...props
+}: SplitTransactionButtonProps): ReactElement<typeof View> {
+  return (
+    <View
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+      role="button"
+      style={{
+        backgroundColor: highlighted
+          ? theme.menuAutoCompleteBackgroundHover
+          : 'transparent',
+        borderRadius: embedded ? 4 : 0,
+        flexShrink: 0,
+        flexDirection: 'row',
+        alignItems: 'center',
+        fontSize: 11,
+        fontWeight: 500,
+        color: theme.noticeTextMenu,
+        padding: '6px 8px',
+        ':active': {
+          backgroundColor: 'rgba(100, 100, 100, .25)',
+        },
+        ...style,
+      }}
+      data-testid="gift-card-button"
+      {...props}
+    >
+      <Text style={{ lineHeight: 0 }}>
+        <SvgGift width={10} height={10} style={{ marginRight: 5 }} />
+      </Text>
+      {label ?? <Trans>Gift Card</Trans>}
+    </View>
+  );
 }
 
 type CategoryItemProps = {

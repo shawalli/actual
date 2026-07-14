@@ -11,8 +11,10 @@ import * as monthUtils from '@actual-app/core/shared/months';
 import { q } from '@actual-app/core/shared/query';
 import { getUpcomingDays } from '@actual-app/core/shared/schedules';
 import {
+  addGiftCardSplitTransaction,
   addSplitTransaction,
   applyTransactionDiff,
+  GIFT_CARD_CATEGORY_ID,
   isPreviewId,
   makeEmptySplitSubtransactions,
   realizeTempTransactions,
@@ -23,6 +25,7 @@ import { applyChanges, getChangedValues } from '@actual-app/core/shared/util';
 import type {
   AccountEntity,
   CategoryEntity,
+  CategoryGroupEntity,
   PayeeEntity,
   RuleActionEntity,
   RuleConditionEntity,
@@ -84,6 +87,17 @@ async function saveDiffAndApply(diff, changes, onChange, learnCategories) {
     applyTransactionDiff(changes.newTransaction, remoteDiff),
     // @ts-expect-error - fix me
     applyChanges(remoteDiff, changes.data),
+  );
+}
+
+function getGiftCardCategoryId(categoryGroups: CategoryGroupEntity[]) {
+  const incomeCategories =
+    categoryGroups.find(group => group.is_income)?.categories ?? [];
+
+  return (
+    incomeCategories.find(
+      category => !category.hidden && category.name.toLowerCase() === 'income',
+    )?.id ?? incomeCategories.find(category => !category.hidden)?.id
   );
 }
 
@@ -386,7 +400,16 @@ export function TransactionList({
 
   const onAdd = useCallback(
     async (newTransactions: TransactionEntity[]) => {
-      newTransactions = realizeTempTransactions(newTransactions);
+      const giftCardCategory = getGiftCardCategoryId(categoryGroups);
+      newTransactions = realizeTempTransactions(newTransactions).map(
+        transaction =>
+          transaction.isGiftCard
+            ? {
+                ...transaction,
+                category: giftCardCategory ?? GIFT_CARD_CATEGORY_ID,
+              }
+            : transaction,
+      );
 
       const parentTransaction = newTransactions.find(t => !t.is_child);
       const isLinkedToSchedule = !!parentTransaction?.schedule;
@@ -423,7 +446,12 @@ export function TransactionList({
       await saveDiff({ added: newTransactions }, isLearnCategoriesEnabled);
       onRefetch();
     },
-    [isLearnCategoriesEnabled, onRefetch, promptToConvertToSchedule],
+    [
+      categoryGroups,
+      isLearnCategoriesEnabled,
+      onRefetch,
+      promptToConvertToSchedule,
+    ],
   );
 
   const onSave = useCallback(
@@ -495,6 +523,25 @@ export function TransactionList({
       return changes.diff.added[0].id;
     },
     [isLearnCategoriesEnabled, onChange],
+  );
+
+  const onAddGiftCardSplit = useCallback(
+    (id: TransactionEntity['id']) => {
+      const changes = addGiftCardSplitTransaction(
+        transactionsLatest.current,
+        id,
+        getGiftCardCategoryId(categoryGroups),
+      );
+      onChange(changes.newTransaction, changes.data);
+      void saveDiffAndApply(
+        changes.diff,
+        changes,
+        onChange,
+        isLearnCategoriesEnabled,
+      );
+      return changes.diff.added.find(t => !t.isGiftCard)?.id ?? id;
+    },
+    [categoryGroups, isLearnCategoriesEnabled, onChange],
   );
 
   const onSplit = useCallback(
@@ -628,6 +675,10 @@ export function TransactionList({
 
       // Child transaction reordering: siblings only
       if (draggedTrans.is_child && draggedTrans.parent_id) {
+        if (draggedTrans.isGiftCard) {
+          return;
+        }
+
         const siblings = allTransactions.filter(
           t => t.parent_id === draggedTrans.parent_id && !isPreviewId(t.id),
         );
@@ -635,6 +686,9 @@ export function TransactionList({
         const targetTransIdx = siblings.findIndex(t => t.id === targetId);
         if (targetTransIdx === -1) {
           return; // Target is not a sibling
+        }
+        if (siblings[targetTransIdx].isGiftCard && dropPos === 'before') {
+          return;
         }
 
         // Convert dropPos to API targetId for child reordering
@@ -752,6 +806,7 @@ export function TransactionList({
         onSave={onSave}
         onApplyRules={onApplyRules}
         onSplit={onSplit}
+        onAddGiftCardSplit={onAddGiftCardSplit}
         onCloseAddTransaction={onCloseAddTransaction}
         onAdd={onAdd}
         onAddSplit={onAddSplit}

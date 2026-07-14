@@ -30,6 +30,38 @@ function SplitTransactionError(total: number, parent: TransactionEntity) {
 
 type GenericTransactionEntity = TransactionEntity;
 
+export const GIFT_CARD_NOTES = 'Gift Card';
+export const GIFT_CARD_CATEGORY_ID = 'to-budget';
+
+export function isGiftCardChild(transaction: TransactionEntity) {
+  return !!transaction.is_child && !!transaction.isGiftCard;
+}
+
+export function findGiftCardChild(transaction: TransactionEntity) {
+  return transaction.subtransactions?.find(isGiftCardChild) ?? null;
+}
+
+export function hasGiftCardChild(transaction: TransactionEntity) {
+  return findGiftCardChild(transaction) != null;
+}
+
+export function keepGiftCardChildFirst(
+  subtransactions: readonly TransactionEntity[] = [],
+) {
+  const giftCardChild = subtransactions.find(isGiftCardChild);
+
+  if (!giftCardChild) {
+    return [...subtransactions];
+  }
+
+  return [
+    giftCardChild,
+    ...subtransactions.filter(
+      transaction => transaction.id !== giftCardChild.id,
+    ),
+  ];
+}
+
 export function makeChild<T extends GenericTransactionEntity>(
   parent: T,
   data: object = {},
@@ -58,12 +90,37 @@ export function makeChild<T extends GenericTransactionEntity>(
   } as unknown as T;
 }
 
+export function makeGiftCardChild(
+  parent: TransactionEntity,
+  data: Partial<TransactionEntity> = {},
+) {
+  return makeChild(parent, {
+    category: GIFT_CARD_CATEGORY_ID,
+    ...data,
+    isGiftCard: true,
+    notes: GIFT_CARD_NOTES,
+  });
+}
+
 export function makeEmptySplitSubtransactions(
   parent: TransactionEntity,
 ): TransactionEntity[] {
   return [
     makeChild(parent, { sort_order: -1 }),
     makeChild(parent, { sort_order: -2 }),
+  ];
+}
+
+export function makeGiftCardSplitSubtransactions(
+  parent: TransactionEntity,
+  giftCardCategory: TransactionEntity['category'] = GIFT_CARD_CATEGORY_ID,
+): TransactionEntity[] {
+  return [
+    makeGiftCardChild(parent, {
+      category: giftCardCategory,
+      sort_order: -1,
+    }),
+    makeChild(parent, { amount: parent.amount, sort_order: -2 }),
   ];
 }
 
@@ -83,6 +140,38 @@ function makeNonChild<T extends GenericTransactionEntity>(
   } as unknown as T;
 }
 
+export function recalculateGiftCardSplit(
+  transaction: TransactionEntity,
+): TransactionEntity {
+  const giftCardChild = findGiftCardChild(transaction);
+
+  if (!giftCardChild) {
+    return transaction;
+  }
+
+  const nonGiftCardTotal = (transaction.subtransactions ?? [])
+    .filter(t => t.id !== giftCardChild.id)
+    .reduce((total, t) => total + num(t.amount), 0);
+  const giftCardAmount = num(transaction.amount) - nonGiftCardTotal;
+
+  return {
+    ...transaction,
+    subtransactions: keepGiftCardChildFirst(
+      transaction.subtransactions?.map(t =>
+        t.id === giftCardChild.id
+          ? {
+              ...t,
+              isGiftCard: true,
+              category: t.category || GIFT_CARD_CATEGORY_ID,
+              notes: GIFT_CARD_NOTES,
+              amount: giftCardAmount,
+            }
+          : t,
+      ),
+    ),
+  } satisfies TransactionEntity;
+}
+
 function makeTransactionWithChildCategory<T extends GenericTransactionEntity>(
   parent: T,
   data: Partial<TransactionEntity>,
@@ -95,6 +184,8 @@ function makeTransactionWithChildCategory<T extends GenericTransactionEntity>(
 }
 
 export function recalculateSplit(trans: TransactionEntity) {
+  trans = recalculateGiftCardSplit(trans);
+
   // Calculate the new total of split transactions and make sure
   // that it equals the parent amount
   const total = (trans.subtransactions || []).reduce(
@@ -266,6 +357,52 @@ export function addSplitTransaction(
   });
 }
 
+export function addGiftCardSplitTransaction(
+  transactions: readonly TransactionEntity[],
+  id: string,
+  giftCardCategory: TransactionEntity['category'] = GIFT_CARD_CATEGORY_ID,
+) {
+  return replaceTransactions(transactions, id, trans => {
+    if (!trans.is_parent) {
+      return recalculateSplit({
+        ...trans,
+        is_parent: true,
+        payee: null,
+        error: null,
+        subtransactions: makeGiftCardSplitSubtransactions(
+          trans,
+          giftCardCategory,
+        ),
+      });
+    }
+
+    if (hasGiftCardChild(trans)) {
+      return trans;
+    }
+
+    const selectedChild = trans.subtransactions?.find(t => t.id === id);
+    const firstSubtransaction = trans.subtransactions?.[0];
+    const giftCardChild = selectedChild
+      ? makeGiftCardChild(trans, {
+          ...selectedChild,
+          category: giftCardCategory,
+        })
+      : makeGiftCardChild(trans, {
+          category: giftCardCategory,
+          sort_order: num(firstSubtransaction?.sort_order) + 1,
+        });
+    const subtransactions = [
+      giftCardChild,
+      ...(trans.subtransactions?.filter(t => t.id !== giftCardChild.id) ?? []),
+    ];
+
+    return recalculateSplit({
+      ...trans,
+      subtransactions,
+    });
+  });
+}
+
 export function updateTransaction(
   transactions: readonly TransactionEntity[],
   transaction: TransactionEntity,
@@ -352,16 +489,16 @@ export function splitTransaction(
 
     const { error: _error, ...rest } = trans;
 
-    return {
+    return recalculateSplit({
       ...rest,
       is_parent: true,
       payee: null,
-      error: num(trans.amount) === 0 ? null : SplitTransactionError(0, trans),
+      error: null,
       subtransactions: subtransactions.map(t => ({
         ...t,
         sort_order: t.sort_order || -1,
       })),
-    } satisfies TransactionEntity;
+    } satisfies TransactionEntity);
   });
 }
 

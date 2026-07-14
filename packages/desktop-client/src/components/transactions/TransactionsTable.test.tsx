@@ -9,7 +9,9 @@ import {
 import { initServer } from '@actual-app/core/platform/client/connection';
 import { shortcodeToNative } from '@actual-app/core/shared/emoji';
 import {
+  addGiftCardSplitTransaction,
   addSplitTransaction,
+  GIFT_CARD_NOTES,
   realizeTempTransactions,
   splitTransaction,
   updateTransaction,
@@ -134,6 +136,11 @@ const categoryGroups = generateCategoryGroups([
     name: 'Projects',
     categories: [{ name: 'Big Projects' }, { name: 'Shed' }],
   },
+  {
+    name: 'Income',
+    is_income: true,
+    categories: [{ name: 'Starting Balances' }, { name: 'Income' }],
+  },
 ]);
 vi.mock('../../hooks/useCategories', () => ({
   useCategories: () => ({
@@ -143,6 +150,9 @@ vi.mock('../../hooks/useCategories', () => ({
 }));
 
 const usualGroup = categoryGroups[1];
+const incomeCategory = categoryGroups[3].categories!.find(
+  category => category.name === 'Income',
+)!;
 let schedules: ScheduleEntity[] = [];
 
 function generateTransactions(
@@ -225,6 +235,16 @@ function LiveTransactionTable(props: LiveTransactionTableProps) {
     return diff.added[0].id;
   };
 
+  const onAddGiftCardSplit = (id: string) => {
+    const { data, diff } = addGiftCardSplitTransaction(
+      transactions,
+      id,
+      incomeCategory.id,
+    );
+    setTransactions(data);
+    return diff.added.find(t => !t.isGiftCard)?.id ?? id;
+  };
+
   const onCreatePayee = async () => 'id';
 
   // It's important that these functions are they same instances
@@ -252,6 +272,7 @@ function LiveTransactionTable(props: LiveTransactionTableProps) {
                   addNotification={console.log}
                   onSave={onSave}
                   onSplit={onSplit}
+                  onAddGiftCardSplit={onAddGiftCardSplit}
                   onAdd={onAdd}
                   onAddSplit={onAddSplit}
                   onCreatePayee={onCreatePayee}
@@ -576,6 +597,87 @@ describe('Transactions', () => {
     });
   });
 
+  test('transactions table shows split child flags', () => {
+    const [parent, firstChild, secondChild] = generateTransaction(
+      {
+        account: accounts[0].id,
+        amount: 5000,
+        flag: ':large_blue_circle:',
+      },
+      3000,
+    );
+    const transactions = [
+      parent,
+      {
+        ...firstChild,
+        flag: ':orange_circle:',
+      },
+      {
+        ...secondChild,
+        flag: null,
+      },
+    ];
+
+    const { container } = renderTransactions({
+      transactions,
+    });
+
+    expect(queryField(container, 'flag', 'div', 0).textContent).toBe(
+      shortcodeToNative(':large_blue_circle:'),
+    );
+    expect(queryField(container, 'flag', 'div', 1).textContent).toBe(
+      shortcodeToNative(':orange_circle:'),
+    );
+    expect(queryField(container, 'flag', 'div', 2).textContent).toBe('');
+    expect(queryField(container, 'flag', '', 2).querySelector('svg')).not.toBe(
+      null,
+    );
+  });
+
+  test('split child flags can be edited independently from parent flags', async () => {
+    const [parent, firstChild] = generateTransaction(
+      {
+        account: accounts[0].id,
+        amount: 5000,
+        flag: ':100:',
+      },
+      3000,
+    );
+    const transactions = [
+      parent,
+      {
+        ...firstChild,
+        flag: null,
+      },
+    ];
+
+    const { container, getTransactions } = renderTransactions({
+      transactions,
+    });
+
+    await editField(container, 'flag', 1);
+    await waitFor(() => {
+      expect(screen.getByText('😀')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByText('😀').closest('button')!);
+
+    await waitFor(() => {
+      expect(getTransactions()[0].flag).toBe(':100:');
+      expect(getTransactions()[1].flag).toBe(':grinning:');
+    });
+
+    await editField(container, 'flag', 0);
+    await waitFor(() => {
+      expect(screen.getByText('Remove')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByText('Remove'));
+
+    await waitFor(() => {
+      expect(getTransactions()[0].flag).toBe('');
+      expect(getTransactions()[1].flag).toBe(':grinning:');
+    });
+  });
+
   test('keybindings enter/tab/alt should move around', async () => {
     const { container } = renderTransactions();
 
@@ -718,6 +820,255 @@ describe('Transactions', () => {
     expect(items.length).toBe(3);
   }, 30000);
 
+  test('category dropdown shows searchable Gift Card after Split Transaction', async () => {
+    const { container } = renderTransactions();
+    const input = await editField(container, 'category', 2);
+    const autocomplete = screen.getByTestId('autocomplete');
+    const splitButton = screen.getByTestId('split-transaction-button');
+    const giftCardButton = screen.getByTestId('gift-card-button');
+    const firstCategory = autocomplete.querySelector(
+      '[data-testid$="category-item"]',
+    );
+
+    expect(
+      splitButton.compareDocumentPosition(giftCardButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(firstCategory).not.toBeNull();
+    expect(
+      giftCardButton.compareDocumentPosition(firstCategory!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Gift');
+
+    expect(screen.getByTestId('split-transaction-button')).toBeInTheDocument();
+    expect(screen.getByTestId('gift-card-button')).toBeInTheDocument();
+    expect(
+      screen
+        .getByTestId('autocomplete')
+        .querySelectorAll('[data-testid$="category-item"]'),
+    ).toHaveLength(0);
+  }, 30000);
+
+  test('new transaction Gift Card flow shows draft labels and Add Split', async () => {
+    const { container, getTransactions, updateProps } = renderTransactions();
+    updateProps({ isAdding: true });
+
+    await editNewField(container, 'category');
+    const giftCardButton = screen.getByTestId('gift-card-button');
+    const splitButton = screen.getByTestId('split-transaction-button');
+
+    expect(splitButton).toHaveTextContent('Split Transaction');
+    expect(giftCardButton).toHaveTextContent('Gift Card Transaction');
+    expect(
+      splitButton.compareDocumentPosition(giftCardButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await userEvent.click(giftCardButton);
+
+    const cancelButton = container.querySelector(
+      '[data-testid="cancel-button"]',
+    )!;
+    const addButton = container.querySelector('[data-testid="add-button"]')!;
+    const addSplitButton = container.querySelector(
+      '[data-testid="add-split-button"]',
+    )!;
+
+    expect(cancelButton).toBeTruthy();
+    expect(addButton).toBeTruthy();
+    expect(addSplitButton).toBeTruthy();
+    expect(
+      cancelButton.compareDocumentPosition(addButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      addButton.compareDocumentPosition(addSplitButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(queryNewField(container, 'category', '', 1)).toHaveTextContent(
+      'Income',
+    );
+
+    await userEvent.click(addButton);
+
+    const giftCardChild = getTransactions().find(t => t.isGiftCard);
+
+    expect(giftCardChild).toEqual(
+      expect.objectContaining({
+        category: incomeCategory.id,
+      }),
+    );
+  }, 30000);
+
+  test('selecting Gift Card on a normal transaction creates a gift-card split', async () => {
+    const { container, getTransactions } = renderTransactions();
+    const originalTransaction = getTransactions()[2];
+
+    await editField(container, 'category', 2);
+    await userEvent.click(screen.getByTestId('gift-card-button'));
+
+    const transactions = getTransactions();
+    const parentIndex = transactions.findIndex(
+      t => t.id === originalTransaction.id,
+    );
+    const parent = transactions[parentIndex];
+    const giftCardChild = transactions[parentIndex + 1];
+    const normalChild = transactions[parentIndex + 2];
+
+    expect(parent).toEqual(
+      expect.objectContaining({
+        id: originalTransaction.id,
+        is_parent: true,
+        error: null,
+      }),
+    );
+    expect(giftCardChild).toEqual(
+      expect.objectContaining({
+        isGiftCard: true,
+        category: incomeCategory.id,
+        notes: GIFT_CARD_NOTES,
+        amount: 0,
+        parent_id: parent.id,
+      }),
+    );
+    expect(normalChild).toEqual(
+      expect.objectContaining({
+        is_child: true,
+        amount: originalTransaction.amount,
+        category: originalTransaction.category,
+        parent_id: parent.id,
+      }),
+    );
+  }, 30000);
+
+  test('selecting Gift Card on an existing split converts the selected child', async () => {
+    const { container, getTransactions } = renderTransactions();
+    const parent = getTransactions()[0];
+
+    await editField(container, 'category', 0);
+    await userEvent.click(screen.getByTestId('split-transaction-button'));
+    await waitForAutocomplete();
+
+    await editField(container, 'category', 1);
+
+    const giftCardButton = screen.getAllByTestId('gift-card-button').at(-1)!;
+    const firstCategory = screen
+      .getByTestId('autocomplete')
+      .querySelector('[data-testid$="category-item"]');
+    expect(firstCategory).not.toBeNull();
+    expect(
+      giftCardButton.compareDocumentPosition(firstCategory!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    const selectedChild = getTransactions()[1];
+    const existingChildCount = getTransactions().filter(
+      t => t.parent_id === parent.id,
+    ).length;
+    await userEvent.click(giftCardButton);
+
+    const transactions = getTransactions();
+    const updatedParentIndex = transactions.findIndex(t => t.id === parent.id);
+    const giftCardChild = transactions[updatedParentIndex + 1];
+    const childTransactions = transactions.filter(
+      t => t.parent_id === parent.id,
+    );
+
+    expect(giftCardChild).toEqual(
+      expect.objectContaining({
+        id: selectedChild.id,
+        isGiftCard: true,
+        parent_id: parent.id,
+      }),
+    );
+    expect(childTransactions).toHaveLength(existingChildCount);
+  }, 30000);
+
+  test('category dropdown hides Gift Card when a split already has one', async () => {
+    const { container, getTransactions } = renderTransactions();
+
+    await editField(container, 'category', 0);
+    await userEvent.click(screen.getByTestId('split-transaction-button'));
+    await waitForAutocomplete();
+    await editField(container, 'category', 1);
+    await userEvent.click(screen.getAllByTestId('gift-card-button').at(-1)!);
+    await waitFor(() => {
+      expect(getTransactions().some(t => t.isGiftCard)).toBe(true);
+    });
+    expect(getTransactions().filter(t => t.isGiftCard)).toHaveLength(1);
+  }, 30000);
+
+  test('gift-card split toolbar stays available when editing saved split fields', async () => {
+    const { container } = renderTransactions();
+
+    await editField(container, 'category', 0);
+    await userEvent.click(screen.getByTestId('split-transaction-button'));
+    await waitForAutocomplete();
+    await userEvent.click(screen.getByTestId('gift-card-button'));
+
+    expect(screen.getByTestId('gift-card-transaction-toolbar')).toBeTruthy();
+
+    await editField(container, 'payee', 3);
+
+    expect(screen.queryByTestId('gift-card-transaction-toolbar')).toBeNull();
+
+    await editField(container, 'category', 1);
+
+    let toolbar = screen.getByTestId('gift-card-transaction-toolbar');
+
+    await editField(container, 'credit', 1);
+
+    toolbar = screen.getByTestId('gift-card-transaction-toolbar');
+
+    await editField(container, 'debit', 1);
+
+    toolbar = screen.getByTestId('gift-card-transaction-toolbar');
+    const cancelButton = toolbar.querySelector(
+      '[data-testid="cancel-button"]',
+    )!;
+    const addSplitButton = toolbar.querySelector(
+      '[data-testid="add-split-button"]',
+    )!;
+
+    expect(toolbar).toBeTruthy();
+    expect(cancelButton).toBeTruthy();
+    expect(addSplitButton).toBeTruthy();
+    expect(
+      cancelButton.compareDocumentPosition(addSplitButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    await userEvent.click(cancelButton);
+
+    expect(screen.queryByTestId('gift-card-transaction-toolbar')).toBeNull();
+  }, 30000);
+
+  test('gift-card split amount is derived and read-only', async () => {
+    const { container, getTransactions } = renderTransactions();
+
+    await editField(container, 'category', 2);
+    await userEvent.click(screen.getByTestId('gift-card-button'));
+
+    const giftCardIndex = getTransactions().findIndex(t => t.isGiftCard);
+    const originalGiftCardAmount = getTransactions()[giftCardIndex].amount;
+    const debitInput = await editField(container, 'debit', giftCardIndex);
+
+    expect(debitInput.readOnly).toBe(true);
+
+    fireEvent.change(debitInput, { target: { value: '123.45' } });
+    await userEvent.tab();
+
+    expect(getTransactions()[giftCardIndex]).toEqual(
+      expect.objectContaining({
+        isGiftCard: true,
+        amount: originalGiftCardAmount,
+      }),
+    );
+  }, 30000);
+
   test('dropdown selects an item with keyboard', async () => {
     const { container, getTransactions } = renderTransactions();
 
@@ -729,7 +1080,9 @@ describe('Transactions', () => {
       .querySelector('[data-highlighted]');
     expect(highlighted).toBeNull();
 
-    await userEvent.keyboard('[ArrowDown][ArrowDown][ArrowDown][ArrowDown]');
+    await userEvent.keyboard(
+      '[ArrowDown][ArrowDown][ArrowDown][ArrowDown][ArrowDown]',
+    );
 
     // The right item should be highlighted
     highlighted = screen

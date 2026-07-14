@@ -27,7 +27,10 @@ export function filterCategorySuggestions<T extends CategorySuggestion>(
   value: string,
 ): T[] {
   const splitItem = suggestions.find(s => s.id === 'split');
-  const realSuggestions = suggestions.filter(s => s.id !== 'split');
+  const giftCardItem = suggestions.find(s => s.id === 'gift-card');
+  const realSuggestions = suggestions.filter(
+    s => s.id !== 'split' && s.id !== 'gift-card',
+  );
 
   if (!value) {
     return suggestions;
@@ -46,5 +49,13 @@ export function filterCategorySuggestions<T extends CategorySuggestion>(
 
   const filtered = [...nameMatches, ...groupMatches].slice(0, 100);
 
-  return splitItem ? [splitItem, ...filtered] : filtered;
+  const specialItems = [
+    ...(splitItem ? [splitItem] : []),
+    ...(giftCardItem &&
+    giftCardItem.name.toLowerCase().includes(value.toLowerCase())
+      ? [giftCardItem]
+      : []),
+  ];
+
+  return [...specialItems, ...filtered];
 }

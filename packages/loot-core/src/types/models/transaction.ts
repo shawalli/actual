@@ -9,6 +9,7 @@ export type TransactionEntity = {
   id: string;
   is_parent?: boolean;
   is_child?: boolean;
+  isGiftCard?: boolean;
   parent_id?: TransactionEntity['id'];
   account: AccountEntity['id'];
   category?: CategoryEntity['id'];

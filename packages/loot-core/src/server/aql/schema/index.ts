@@ -36,6 +36,7 @@ export const schema = {
     id: f('id'),
     is_parent: f('boolean'),
     is_child: f('boolean'),
+    isGiftCard: f('boolean'),
     parent_id: f('id'),
     account: f('id', { ref: 'accounts', required: true }),
     category: f('id', { ref: 'categories' }),

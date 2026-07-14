@@ -172,6 +172,7 @@ export type DbTransaction = {
   id: string;
   isParent: 1 | 0;
   isChild: 1 | 0;
+  isGiftCard: 1 | 0;
   date: number;
   acct: DbAccount['id'];
   amount: number;
@@ -282,6 +283,7 @@ export type DbViewTransactionInternal = {
   id: DbTransaction['id'];
   is_parent: DbTransaction['isParent'];
   is_child: DbTransaction['isChild'];
+  isGiftCard: DbTransaction['isGiftCard'];
   date: DbTransaction['date'];
   account: DbAccount['id'];
   amount: DbTransaction['amount'];

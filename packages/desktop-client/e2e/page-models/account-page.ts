@@ -194,6 +194,18 @@ export class AccountPage {
     await modal.waitFor({ state: 'hidden' });
   }
 
+  async setTransactionFlag(index: number, shortcode: string) {
+    const flagCell = this.transactionTableRow.nth(index).getByTestId('flag');
+    await flagCell.click();
+    const popover = this.page.getByTestId('emoji-select-popover');
+    await popover.waitFor({ state: 'visible', timeout: 2000 });
+    const flagInput = flagCell.getByRole('textbox');
+    await this.selectInputText(flagInput);
+    await flagInput.pressSequentially(shortcode);
+    await flagInput.press('Enter');
+    await popover.waitFor({ state: 'hidden', timeout: 2000 });
+  }
+
   /**
    * Open the modal for closing the account.
    */

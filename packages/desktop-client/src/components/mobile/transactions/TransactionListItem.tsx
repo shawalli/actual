@@ -21,6 +21,7 @@ import { Text } from '@actual-app/components/text';
 import { TextOneLine } from '@actual-app/components/text-one-line';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+import { shortcodeToNative } from '@actual-app/core/shared/emoji';
 import { isPreviewId } from '@actual-app/core/shared/transactions';
 import { integerToCurrency } from '@actual-app/core/shared/util';
 import type { IntegerAmount } from '@actual-app/core/shared/util';
@@ -130,6 +131,7 @@ export function TransactionListItem({
     is_child: isChild,
     notes,
     forceUpcoming,
+    flag,
   } = transaction;
 
   const previewStatus = forceUpcoming ? 'upcoming' : categoryId;
@@ -146,6 +148,15 @@ export function TransactionListItem({
 
   const prettyCategory = specialCategory || categoryName;
   const textStyle = getTextStyle({ isPreview });
+  const nativeParentFlag = shortcodeToNative(flag || null);
+  const nativeChildFlags =
+    transaction.subtransactions
+      ?.map(t => shortcodeToNative(t.flag || null))
+      .filter(Boolean) ?? [];
+  const nativeFlags = [
+    ...(nativeParentFlag ? [{ emoji: nativeParentFlag, isChild: false }] : []),
+    ...nativeChildFlags.map(emoji => ({ emoji, isChild: true })),
+  ];
 
   return (
     <PressResponder {...mergeProps(pressProps, longPressProps)}>
@@ -238,29 +249,72 @@ export function TransactionListItem({
                   />
                 )}
                 {(isParent || isChild) && (
-                  <SvgSplit
+                  <>
+                    <SvgSplit
+                      style={{
+                        width: 12,
+                        height: 12,
+                        marginRight: 5,
+                      }}
+                    />
+                    <TextOneLine
+                      style={{
+                        fontSize: 11,
+                        marginTop: 1,
+                        marginRight: nativeFlags.length > 0 ? 5 : 0,
+                        fontWeight: '400',
+                        color: theme.tableText,
+                        fontStyle: 'italic',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {prettyCategory}
+                    </TextOneLine>
+                  </>
+                )}
+                {nativeFlags.length > 0 && (
+                  <View
                     style={{
-                      width: 12,
-                      height: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
                       marginRight: 5,
                     }}
-                  />
+                  >
+                    {nativeFlags.map(({ emoji, isChild }, index) => (
+                      <Text
+                        key={`${emoji}-${index}`}
+                        style={{
+                          fontSize: 12,
+                          lineHeight: '12px',
+                          marginRight: index === nativeFlags.length - 1 ? 0 : 6,
+                          color: isChild ? theme.pageTextSubdued : undefined,
+                          opacity: isChild ? 0.7 : undefined,
+                        }}
+                      >
+                        {emoji}
+                      </Text>
+                    ))}
+                  </View>
                 )}
-                <TextOneLine
-                  style={{
-                    fontSize: 11,
-                    marginTop: 1,
-                    fontWeight: '400',
-                    color: prettyCategory
-                      ? theme.tableText
-                      : theme.menuItemTextSelected,
-                    fontStyle:
-                      specialCategory || !prettyCategory ? 'italic' : undefined,
-                    textAlign: 'left',
-                  }}
-                >
-                  {prettyCategory || t('Uncategorized')}
-                </TextOneLine>
+                {!isParent && !isChild && (
+                  <TextOneLine
+                    style={{
+                      fontSize: 11,
+                      marginTop: 1,
+                      fontWeight: '400',
+                      color: prettyCategory
+                        ? theme.tableText
+                        : theme.menuItemTextSelected,
+                      fontStyle:
+                        specialCategory || !prettyCategory
+                          ? 'italic'
+                          : undefined,
+                      textAlign: 'left',
+                    }}
+                  >
+                    {prettyCategory || t('Uncategorized')}
+                  </TextOneLine>
+                )}
               </View>
             )}
             {notes && (

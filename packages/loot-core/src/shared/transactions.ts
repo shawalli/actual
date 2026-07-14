@@ -76,6 +76,7 @@ export function makeChild<T extends GenericTransactionEntity>(
     id: 'id' in data ? data.id : prefix + uuidv4(),
     account: parent.account,
     date: parent.date,
+    flag: 'flag' in data ? data.flag : parent.flag,
     cleared: parent.cleared != null ? parent.cleared : null,
     reconciled: parent.reconciled != null ? parent.reconciled : null,
     starting_balance_flag:

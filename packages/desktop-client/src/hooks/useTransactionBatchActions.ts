@@ -36,6 +36,7 @@ type BatchReconciledReason = Extract<
 type BatchEditProps = {
   name: keyof TransactionEntity;
   ids: Array<TransactionEntity['id']>;
+  flagInputMode?: 'emoji-autocomplete' | 'mobile-flag';
   onSuccess?: (
     ids: Array<TransactionEntity['id']>,
     name: keyof TransactionEntity,
@@ -79,7 +80,12 @@ export function useTransactionBatchActions() {
   const dispatch = useDispatch();
   const { t } = useTranslation();
 
-  const onBatchEdit = async ({ name, ids, onSuccess }: BatchEditProps) => {
+  const onBatchEdit = async ({
+    name,
+    ids,
+    flagInputMode = 'emoji-autocomplete',
+    onSuccess,
+  }: BatchEditProps) => {
     const { data } = await aqlQuery(
       q('transactions')
         .filter({ id: { $oneof: ids } })
@@ -114,11 +120,6 @@ export function useTransactionBatchActions() {
         if (name === 'cleared' && trans.reconciled) {
           // Skip transactions that are reconciled. Don't want to set them as
           // uncleared.
-          return;
-        }
-
-        // Skip child transactions for flag edits - flags are set on parent only
-        if (name === 'flag' && trans.is_child) {
           return;
         }
 
@@ -227,6 +228,23 @@ export function useTransactionBatchActions() {
       );
     };
 
+    const pushMobileFlagModal = () => {
+      dispatch(
+        pushModal({
+          modal: {
+            name: 'mobile-flag',
+            options: {
+              value: null,
+              description: t(
+                'Choose one emoji as a flag for the selected transactions.',
+              ),
+              onSave: flag => onChange(name, flag ?? null),
+            },
+          },
+        }),
+      );
+    };
+
     const pushEditField = () => {
       if (name !== 'date' && name !== 'amount' && name !== 'notes') {
         return;
@@ -281,7 +299,11 @@ export function useTransactionBatchActions() {
       } else if (name === 'account') {
         pushAccountAutocompleteModal();
       } else if (name === 'flag') {
-        pushEmojiAutocompleteModal();
+        if (flagInputMode === 'mobile-flag') {
+          pushMobileFlagModal();
+        } else {
+          pushEmojiAutocompleteModal();
+        }
       } else {
         pushEditField();
       }

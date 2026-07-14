@@ -30,6 +30,8 @@ import * as queries from '#queries';
 import { useDispatch } from '#redux';
 import * as bindings from '#spreadsheet/bindings';
 
+import { getTransactionsWithSplitChildren } from '../transactions/getTransactionsWithSplitChildren';
+
 export function AccountTransactions({
   account,
 }: {
@@ -205,7 +207,7 @@ function TransactionListWithPreviews({
 
   const transactionsToDisplay = !isSearching
     ? // Do not render child transactions in the list, unless searching
-      previewTransactions.concat(transactions.filter(t => !t.is_child))
+      previewTransactions.concat(getTransactionsWithSplitChildren(transactions))
     : transactions;
 
   return (

@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
 import { MobileAccountPage } from './mobile-account-page';
@@ -9,6 +10,7 @@ export class MobileTransactionEntryPage {
   readonly transactionForm: Locator;
   readonly footer: Locator;
   readonly addTransactionButton: Locator;
+  readonly flagButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -18,6 +20,9 @@ export class MobileTransactionEntryPage {
     this.footer = page.getByTestId('transaction-form-footer');
     this.addTransactionButton = this.footer.getByRole('button', {
       name: 'Add transaction',
+    });
+    this.flagButton = this.transactionForm.getByRole('button', {
+      name: 'Flag',
     });
   }
 
@@ -50,6 +55,33 @@ export class MobileTransactionEntryPage {
       .click();
     await comboboxInput.waitFor({ state: 'hidden' });
     await fieldLocator.filter({ hasText: content }).waitFor();
+  }
+
+  async setFlag(emoji: string) {
+    await this.flagButton.click();
+    const flagModal = this.page.getByTestId('mobile-flag-modal');
+    const flagInput = flagModal.getByLabel('Flag emoji');
+    await flagInput.fill(emoji);
+    await flagModal.getByRole('button', { name: 'Save' }).click();
+    await flagModal.waitFor({ state: 'hidden' });
+    await expect(this.flagButton).toHaveText(emoji);
+  }
+
+  async removeFlag() {
+    await this.flagButton.click();
+    const flagModal = this.page.getByTestId('mobile-flag-modal');
+    await flagModal.getByRole('button', { name: 'Remove' }).click();
+    await flagModal.waitFor({ state: 'hidden' });
+    await expect(this.flagButton).not.toHaveText(/\S/);
+  }
+
+  async saveChanges() {
+    const saveChangesButton = this.footer.getByRole('button', {
+      name: 'Save changes',
+    });
+    await expect(saveChangesButton).toBeEnabled();
+    await saveChangesButton.click();
+    await this.transactionForm.waitFor({ state: 'hidden' });
   }
 
   async createTransaction() {

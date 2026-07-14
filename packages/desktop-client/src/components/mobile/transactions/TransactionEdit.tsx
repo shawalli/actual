@@ -205,7 +205,11 @@ type MobileFlagButtonProps = {
   onPress: () => void;
 };
 
-function MobileFlagButton({ flag, isDisabled, onPress }: MobileFlagButtonProps) {
+function MobileFlagButton({
+  flag,
+  isDisabled,
+  onPress,
+}: MobileFlagButtonProps) {
   const { t } = useTranslation();
   const nativeFlag = getNativeFlag(flag);
 

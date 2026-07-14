@@ -253,13 +253,28 @@ export function TransactionListItem({
                   />
                 )}
                 {(isParent || isChild) && (
-                  <SvgSplit
-                    style={{
-                      width: 12,
-                      height: 12,
-                      marginRight: 5,
-                    }}
-                  />
+                  <>
+                    <SvgSplit
+                      style={{
+                        width: 12,
+                        height: 12,
+                        marginRight: 5,
+                      }}
+                    />
+                    <TextOneLine
+                      style={{
+                        fontSize: 11,
+                        marginTop: 1,
+                        marginRight: nativeFlags.length > 0 ? 5 : 0,
+                        fontWeight: '400',
+                        color: theme.tableText,
+                        fontStyle: 'italic',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {prettyCategory}
+                    </TextOneLine>
+                  </>
                 )}
                 {nativeFlags.length > 0 && (
                   <View
@@ -275,7 +290,7 @@ export function TransactionListItem({
                         style={{
                           fontSize: 12,
                           lineHeight: '12px',
-                          marginRight: index === nativeFlags.length - 1 ? 0 : 2,
+                          marginRight: index === nativeFlags.length - 1 ? 0 : 6,
                           color: isChild ? theme.pageTextSubdued : undefined,
                           opacity: isChild ? 0.7 : undefined,
                         }}
@@ -285,21 +300,25 @@ export function TransactionListItem({
                     ))}
                   </View>
                 )}
-                <TextOneLine
-                  style={{
-                    fontSize: 11,
-                    marginTop: 1,
-                    fontWeight: '400',
-                    color: prettyCategory
-                      ? theme.tableText
-                      : theme.menuItemTextSelected,
-                    fontStyle:
-                      specialCategory || !prettyCategory ? 'italic' : undefined,
-                    textAlign: 'left',
-                  }}
-                >
-                  {prettyCategory || t('Uncategorized')}
-                </TextOneLine>
+                {!isParent && !isChild && (
+                  <TextOneLine
+                    style={{
+                      fontSize: 11,
+                      marginTop: 1,
+                      fontWeight: '400',
+                      color: prettyCategory
+                        ? theme.tableText
+                        : theme.menuItemTextSelected,
+                      fontStyle:
+                        specialCategory || !prettyCategory
+                          ? 'italic'
+                          : undefined,
+                      textAlign: 'left',
+                    }}
+                  >
+                    {prettyCategory || t('Uncategorized')}
+                  </TextOneLine>
+                )}
               </View>
             )}
             {notes && (

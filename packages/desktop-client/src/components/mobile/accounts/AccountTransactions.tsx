@@ -29,8 +29,7 @@ import { collapseModals, pushModal } from '#modals/modalsSlice';
 import * as queries from '#queries';
 import { useDispatch } from '#redux';
 import * as bindings from '#spreadsheet/bindings';
-
-import { getTransactionsWithSplitChildren } from '../transactions/getTransactionsWithSplitChildren';
+import { getTransactionsWithSplitChildren } from '#components/mobile/transactions/getTransactionsWithSplitChildren';
 
 export function AccountTransactions({
   account,

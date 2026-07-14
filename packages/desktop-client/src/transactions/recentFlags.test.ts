@@ -10,10 +10,12 @@ import {
 describe('recent transaction flags', () => {
   describe('normalizeRecentFlags', () => {
     it('returns an empty list for missing or empty input', () => {
-      expect(normalizeRecentFlags(undefined, DESKTOP_RECENT_FLAGS_LIMIT)).toEqual(
+      expect(
+        normalizeRecentFlags(undefined, DESKTOP_RECENT_FLAGS_LIMIT),
+      ).toEqual([]);
+      expect(normalizeRecentFlags(null, DESKTOP_RECENT_FLAGS_LIMIT)).toEqual(
         [],
       );
-      expect(normalizeRecentFlags(null, DESKTOP_RECENT_FLAGS_LIMIT)).toEqual([]);
       expect(normalizeRecentFlags([], DESKTOP_RECENT_FLAGS_LIMIT)).toEqual([]);
     });
 
@@ -58,12 +60,12 @@ describe('recent transaction flags', () => {
     it('does not mutate the list when a flag is cleared', () => {
       const recentFlags = [':red_circle:', ':blue_circle:'];
 
-      expect(addRecentFlag(recentFlags, null, DESKTOP_RECENT_FLAGS_LIMIT)).toEqual(
-        recentFlags,
-      );
-      expect(addRecentFlag(recentFlags, '', DESKTOP_RECENT_FLAGS_LIMIT)).toEqual(
-        recentFlags,
-      );
+      expect(
+        addRecentFlag(recentFlags, null, DESKTOP_RECENT_FLAGS_LIMIT),
+      ).toEqual(recentFlags);
+      expect(
+        addRecentFlag(recentFlags, '', DESKTOP_RECENT_FLAGS_LIMIT),
+      ).toEqual(recentFlags);
       expect(
         addRecentFlag(recentFlags, undefined, DESKTOP_RECENT_FLAGS_LIMIT),
       ).toEqual(recentFlags);
@@ -139,9 +141,7 @@ describe('recent transaction flags', () => {
           yieldedCount += 1;
           yield {
             flag:
-              i === RECENT_FLAGS_SEED_TRANSACTION_LIMIT
-                ? ':red_circle:'
-                : null,
+              i === RECENT_FLAGS_SEED_TRANSACTION_LIMIT ? ':red_circle:' : null,
           };
         }
       }

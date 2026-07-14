@@ -166,6 +166,31 @@ describe('Transactions', () => {
     expect(children.map(c => c.sort_order)).toEqual([-1, -2]);
   });
 
+  test('splitting a flagged transaction preserves flag on generated children', () => {
+    const transactions = [
+      makeTransaction({
+        id: 't1',
+        amount: 5000,
+        flag: ':large_blue_circle:',
+      }),
+    ];
+    const { data } = splitTransaction(transactions, 't1');
+
+    expect(data).toEqual([
+      expect.objectContaining({
+        id: 't1',
+        flag: ':large_blue_circle:',
+      }),
+      expect.objectContaining({
+        parent_id: 't1',
+        flag: ':large_blue_circle:',
+      }),
+    ]);
+
+    const child = makeChild(transactions[0], { flag: ':orange_circle:' });
+    expect(child.flag).toBe(':orange_circle:');
+  });
+
   test('splitting respects explicit child sort orders', () => {
     const transactions = [makeTransaction({ id: 't1', amount: 5000 })];
     const { data } = splitTransaction(transactions, 't1', parent => [

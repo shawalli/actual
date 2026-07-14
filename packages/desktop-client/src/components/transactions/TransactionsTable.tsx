@@ -2316,7 +2316,7 @@ function GiftCardTransactionToolbar({
         onPress={onCancel}
         data-testid="cancel-button"
       >
-        <Trans>Cancel</Trans>
+        <Trans>Close</Trans>
       </Button>
       <Button
         variant="primary"

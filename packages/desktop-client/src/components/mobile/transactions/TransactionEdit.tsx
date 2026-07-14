@@ -770,7 +770,7 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
     const onSaveInner = useCallback(async () => {
       const [unserializedTransaction] = unserializedTransactions;
 
-      const onConfirmSave = () => {
+      const onConfirmSave = async () => {
         let transactionsToSave = unserializedTransactions;
         if (isAdding) {
           transactionsToSave = realizeTempTransactions(
@@ -778,7 +778,7 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
           );
         }
 
-        onSave(transactionsToSave);
+        await onSave(transactionsToSave);
         void navigate(-1);
       };
 
@@ -890,10 +890,10 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
               }),
             );
           } else {
-            onConfirmSave();
+            void onConfirmSave();
           }
         } else {
-          onConfirmSave();
+          void onConfirmSave();
         }
       }
     }, [

@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { ConfigurationPage } from './page-models/configuration-page';
 import { MobileNavigation } from './page-models/mobile-navigation';
+import { MobileTransactionEntryPage } from './page-models/mobile-transaction-entry-page';
 
 test.describe('Mobile Transactions', () => {
   let page: Page;
@@ -64,19 +65,30 @@ test.describe('Mobile Transactions', () => {
     await expect(page.getByTestId('transaction-form'))
       .toMatchAriaSnapshot(`- text: Amount
 - textbox
-- text: 23.42 Payee
-- button "Kroger" [disabled]
+- text: "23.42"
+- button "Flag" [disabled]:
+  - img
+- text: Payee
+- button "Kroger" [disabled]:
+  - img
+  - text: Kroger
 - text: Category
-- button "Food" [disabled]
+- button "Food" [disabled]:
+  - img
+  - text: Food
 - button "Split" [disabled]:
   - img
   - text: Split
 - text: Account
-- button "HSBC" [disabled]
+- button "HSBC" [disabled]:
+  - img
+  - text: HSBC
 - text: Date
+- img
 - textbox [disabled]: 2025-10-31
 - text: Cleared Notes
-- textbox [disabled]: just a note`);
+- img
+- textbox "Add a note (optional)" [disabled]: just a note`);
   });
 
   test('creates a transaction from `/accounts/:id` page', async () => {
@@ -104,6 +116,82 @@ test.describe('Mobile Transactions', () => {
     await expect(accountPage.transactions.nth(0)).toHaveText(
       'KrogerClothing-12.34',
     );
+  });
+
+  test('creates a flagged transaction from `/accounts/:id` page', async () => {
+    const accountsPage = await navigation.goToAccountsPage();
+    const accountPage = await accountsPage.openNthAccount(2);
+    const transactionEntryPage = await accountPage.clickCreateTransaction();
+
+    await transactionEntryPage.fillAmount('12.34');
+    await transactionEntryPage.header.click();
+    await transactionEntryPage.fillField(
+      page.getByTestId('payee-field'),
+      'Kroger',
+    );
+    await transactionEntryPage.fillField(
+      page.getByTestId('category-field'),
+      'Clothing',
+    );
+    await transactionEntryPage.setFlag('🔵');
+
+    await transactionEntryPage.createTransaction();
+
+    await expect(accountPage.transactions.nth(0)).toContainText('Kroger');
+    await expect(accountPage.transactions.nth(0)).toContainText('🔵');
+  });
+
+  test('edits an existing transaction flag from `/accounts/:id` page', async () => {
+    const accountsPage = await navigation.goToAccountsPage();
+    const accountPage = await accountsPage.openNthAccount(2);
+    let transactionEntryPage = await accountPage.clickCreateTransaction();
+
+    await transactionEntryPage.fillAmount('12.34');
+    await transactionEntryPage.header.click();
+    await transactionEntryPage.fillField(
+      page.getByTestId('payee-field'),
+      'Kroger',
+    );
+    await transactionEntryPage.fillField(
+      page.getByTestId('category-field'),
+      'Clothing',
+    );
+    await transactionEntryPage.createTransaction();
+
+    await accountPage.transactions.nth(0).click();
+    transactionEntryPage = new MobileTransactionEntryPage(page);
+    await transactionEntryPage.waitFor();
+    await transactionEntryPage.setFlag('🔵');
+    await transactionEntryPage.saveChanges();
+
+    await expect(accountPage.transactions.nth(0)).toContainText('🔵');
+  });
+
+  test('clears an existing transaction flag from `/accounts/:id` page', async () => {
+    const accountsPage = await navigation.goToAccountsPage();
+    const accountPage = await accountsPage.openNthAccount(2);
+    let transactionEntryPage = await accountPage.clickCreateTransaction();
+
+    await transactionEntryPage.fillAmount('12.34');
+    await transactionEntryPage.header.click();
+    await transactionEntryPage.fillField(
+      page.getByTestId('payee-field'),
+      'Kroger',
+    );
+    await transactionEntryPage.fillField(
+      page.getByTestId('category-field'),
+      'Clothing',
+    );
+    await transactionEntryPage.setFlag('🔵');
+    await transactionEntryPage.createTransaction();
+
+    await accountPage.transactions.nth(0).click();
+    transactionEntryPage = new MobileTransactionEntryPage(page);
+    await transactionEntryPage.waitFor();
+    await transactionEntryPage.removeFlag();
+    await transactionEntryPage.saveChanges();
+
+    await expect(accountPage.transactions.nth(0)).not.toContainText('🔵');
   });
 
   test('creates an uncategorized transaction from `/categories/uncategorized` page', async () => {

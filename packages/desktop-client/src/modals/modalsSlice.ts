@@ -319,6 +319,14 @@ export type Modal =
       };
     }
   | {
+      name: 'mobile-flag';
+      options: {
+        value: TransactionEntity['flag'];
+        onSave: (flag: TransactionEntity['flag']) => void;
+        onClose?: () => void;
+      };
+    }
+  | {
       name: 'budget-summary';
       options: {
         month: string;

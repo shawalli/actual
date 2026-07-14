@@ -17,6 +17,7 @@ import {
   SvgAdd,
   SvgCalendar,
   SvgCheveronDown,
+  SvgFlag,
   SvgLocation,
   SvgPiggyBank,
   SvgTag,
@@ -35,6 +36,7 @@ import { Toggle } from '@actual-app/components/toggle';
 import { View } from '@actual-app/components/view';
 import { send } from '@actual-app/core/platform/client/connection';
 import { DEFAULT_MAX_DISTANCE_METERS } from '@actual-app/core/shared/constants';
+import { shortcodeToNative } from '@actual-app/core/shared/emoji';
 import { calculateDistance } from '@actual-app/core/shared/location-utils';
 import * as monthUtils from '@actual-app/core/shared/months';
 import { q } from '@actual-app/core/shared/query';
@@ -184,6 +186,59 @@ const dropdownChevron = (
   />
 );
 
+type MobileTransactionEditField =
+  | 'category'
+  | 'payee'
+  | 'account'
+  | 'date'
+  | 'amount'
+  | 'notes'
+  | 'flag';
+
+function getNativeFlag(flag: TransactionEntity['flag']) {
+  return flag ? shortcodeToNative(flag) : '';
+}
+
+type MobileFlagButtonProps = {
+  flag: TransactionEntity['flag'];
+  isDisabled?: boolean;
+  onPress: () => void;
+};
+
+function MobileFlagButton({ flag, isDisabled, onPress }: MobileFlagButtonProps) {
+  const { t } = useTranslation();
+  const nativeFlag = getNativeFlag(flag);
+
+  return (
+    <Button
+      variant="bare"
+      aria-label={t('Flag')}
+      isDisabled={isDisabled}
+      onPress={onPress}
+      style={{
+        width: 54,
+        height: 54,
+        border: `1px solid ${theme.buttonNormalBorder}`,
+        borderRadius: 6,
+        backgroundColor: theme.tableBackground,
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 25,
+      }}
+    >
+      {nativeFlag ? (
+        <Text style={{ fontSize: 25, lineHeight: '25px' }}>{nativeFlag}</Text>
+      ) : (
+        <SvgFlag
+          width={24}
+          height={24}
+          style={{ color: theme.pageTextSubdued }}
+        />
+      )}
+    </Button>
+  );
+}
+
 export function Status({
   status,
   isSplit = false,
@@ -238,7 +293,7 @@ type FooterProps = {
   editingField?: string;
   onEditField: (
     id: TransactionEntity['id'],
-    field: 'category' | 'payee' | 'account' | 'date' | 'amount' | 'notes',
+    field: MobileTransactionEditField,
   ) => void;
 };
 
@@ -390,7 +445,7 @@ type ChildTransactionEditProps = {
   isBudgetTransfer: (transaction: TransactionEntity) => boolean;
   onEditField: (
     id: TransactionEntity['id'],
-    field: 'category' | 'payee' | 'account' | 'date' | 'amount' | 'notes',
+    field: MobileTransactionEditField,
   ) => void;
   onUpdate: <Field extends keyof TransactionEntity>(
     transaction: TransactionEntity,
@@ -448,7 +503,7 @@ const ChildTransactionEdit = forwardRef<
         }}
       >
         <View style={{ flexDirection: 'row' }}>
-          <View style={{ flexBasis: '75%' }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <FieldLabel title={t('Payee')} />
             <TapField
               icon={<SvgUser width={17} height={17} />}
@@ -466,6 +521,7 @@ const ChildTransactionEdit = forwardRef<
           <View
             style={{
               flexBasis: '25%',
+              minWidth: 78,
             }}
           >
             <FieldLabel title={t('Amount')} style={{ padding: 0 }} />
@@ -488,6 +544,17 @@ const ChildTransactionEdit = forwardRef<
               onChange={amount => {
                 onUpdate(transaction, 'amount', amount);
               }}
+            />
+          </View>
+          <View style={{ marginLeft: 8, justifyContent: 'flex-end' }}>
+            <FieldLabel title={t('Flag')} style={{ padding: 0 }} />
+            <MobileFlagButton
+              flag={transaction.flag}
+              isDisabled={
+                !!editingField &&
+                editingField !== getFieldName(transaction.id, 'flag')
+              }
+              onPress={() => onEditField(transaction.id, 'flag')}
             />
           </View>
         </View>
@@ -864,7 +931,7 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
     const onEditFieldInner = useCallback(
       (
         transactionId: TransactionEntity['id'],
-        name: 'category' | 'payee' | 'account' | 'date' | 'amount' | 'notes',
+        name: MobileTransactionEditField,
       ) => {
         onRequestActiveEdit?.(getFieldName(transaction.id, name), () => {
           const transactionToEdit = transactions.find(
@@ -931,6 +998,24 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
                     options: {
                       onSelect: payeeId => {
                         void onUpdateInner(transactionToEdit, name, payeeId);
+                      },
+                      onClose: () => {
+                        onClearActiveEdit();
+                      },
+                    },
+                  },
+                }),
+              );
+              break;
+            case 'flag':
+              dispatch(
+                pushModal({
+                  modal: {
+                    name: 'mobile-flag',
+                    options: {
+                      value: transactionToEdit.flag,
+                      onSave: flag => {
+                        void onUpdateInner(transactionToEdit, name, flag);
                       },
                       onClose: () => {
                         onClearActiveEdit();
@@ -1137,6 +1222,7 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
           <View
             style={{
               alignItems: 'center',
+              position: 'relative',
             }}
           >
             <FieldLabel title={t('Amount')} flush style={{ marginBottom: 0 }} />
@@ -1156,6 +1242,23 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
               onChange={onTotalAmountUpdate}
               variant="large"
             />
+            <View
+              style={{
+                position: 'absolute',
+                left: '78%',
+                top: 18,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <MobileFlagButton
+                flag={transaction.flag}
+                isDisabled={
+                  !!editingField &&
+                  editingField !== getFieldName(transaction.id, 'flag')
+                }
+                onPress={() => onEditFieldInner(transaction.id, 'flag')}
+              />
+            </View>
           </View>
 
           <View>

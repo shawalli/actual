@@ -64,6 +64,7 @@ import { ImportYNAB4Modal } from './modals/manager/ImportYNAB4Modal';
 import { ImportYNAB5Modal } from './modals/manager/ImportYNAB5Modal';
 import { ManageRulesModal } from './modals/ManageRulesModal';
 import { MergeUnusedPayeesModal } from './modals/MergeUnusedPayeesModal';
+import { MobileFlagModal } from './modals/MobileFlagModal';
 import { NewCategoryGroupModal } from './modals/NewCategoryGroupModal';
 import { NewCategoryModal } from './modals/NewCategoryModal';
 import { NotesModal } from './modals/NotesModal';
@@ -237,6 +238,9 @@ export function Modals() {
 
         case 'emoji-autocomplete':
           return <EmojiAutocompleteModal key={key} {...modal.options} />;
+
+        case 'mobile-flag':
+          return <MobileFlagModal key={key} {...modal.options} />;
 
         case 'payee-category-learning':
           return <CategoryLearning key={key} />;

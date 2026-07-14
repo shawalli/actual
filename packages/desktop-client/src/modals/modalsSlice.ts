@@ -322,6 +322,7 @@ export type Modal =
       name: 'mobile-flag';
       options: {
         value: TransactionEntity['flag'];
+        description?: string;
         onSave: (flag: TransactionEntity['flag']) => void;
         onClose?: () => void;
       };

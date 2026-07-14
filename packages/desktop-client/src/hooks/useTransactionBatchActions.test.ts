@@ -99,6 +99,29 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     expect(modalStack[0].name).toBe('emoji-autocomplete');
   });
 
+  it('dispatches mobile flag modal when requested for bulk-editing flag', async () => {
+    const tx = makeTransaction({ id: 'tx-1' });
+    mockNonReconciledBatchEditQueries([tx]);
+
+    const { hook, store } = renderBatchActionsHook();
+
+    await act(async () => {
+      await hook.result.current.onBatchEdit({
+        name: 'flag',
+        ids: ['tx-1'],
+        flagInputMode: 'mobile-flag',
+      });
+    });
+
+    const { modalStack } = store.getState().modals;
+    expect(modalStack).toHaveLength(1);
+    expectModal(modalStack[0], 'mobile-flag');
+    expect(modalStack[0].options.value).toBeNull();
+    expect(modalStack[0].options.description).toBe(
+      'Choose one emoji as a flag for the selected transactions.',
+    );
+  });
+
   it('does not dispatch edit-field modal when bulk-editing flag', async () => {
     const tx = makeTransaction({ id: 'tx-1' });
     mockNonReconciledBatchEditQueries([tx]);

@@ -49,6 +49,7 @@ export function sanitizeMobileFlagInput(value: string) {
 
 export function MobileFlagModal({
   value,
+  description,
   onSave,
   onClose,
 }: MobileFlagModalProps) {
@@ -80,7 +81,11 @@ export function MobileFlagModal({
             />
             <View style={{ gap: 14 }}>
               <Text>
-                <Trans>Choose one emoji as a flag for this transaction.</Trans>
+                {description ?? (
+                  <Trans>
+                    Choose one emoji as a flag for this transaction.
+                  </Trans>
+                )}
               </Text>
               <Input
                 autoFocus

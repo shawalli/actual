@@ -28,6 +28,7 @@ import { styles } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+import { shortcodeToNative } from '@actual-app/core/shared/emoji';
 import { validForMerge } from '@actual-app/core/shared/merge';
 import * as monthUtils from '@actual-app/core/shared/months';
 import { isPreviewId } from '@actual-app/core/shared/transactions';
@@ -485,6 +486,7 @@ function SelectedTransactionsFloatingActionBar({
                 void onBatchEdit?.({
                   name,
                   ids: selectedTransactionsArray,
+                  flagInputMode: name === 'flag' ? 'mobile-flag' : undefined,
                   onSuccess: (ids, name, value, mode) => {
                     let displayValue;
                     switch (name) {
@@ -507,30 +509,45 @@ function SelectedTransactionsFloatingActionBar({
                       case 'notes':
                         displayValue = `${mode} with ${String(value)}`;
                         break;
+                      case 'flag':
+                        displayValue = value
+                          ? shortcodeToNative(String(value))
+                          : t('no flag');
+                        break;
                       default:
                         displayValue = value;
                         break;
                     }
+                    const displayValueString = String(displayValue);
+                    const shouldLinkDisplayValue =
+                      name === 'account' ||
+                      name === 'category' ||
+                      name === 'payee';
+                    const displayValueMessage = shouldLinkDisplayValue
+                      ? `[${displayValueString}](#${displayValueString})`
+                      : displayValueString;
 
                     showUndoNotification({
-                      message: `Successfully updated ${name} of ${ids.length} transaction${ids.length > 1 ? 's' : ''} to [${String(displayValue)}](#${String(displayValue)}).`,
-                      messageActions: {
-                        [String(displayValue)]: () => {
-                          switch (name) {
-                            case 'account':
-                              void navigate(`/accounts/${String(value)}`);
-                              break;
-                            case 'category':
-                              void navigate(`/categories/${String(value)}`);
-                              break;
-                            case 'payee':
-                              void navigate(`/payees`);
-                              break;
-                            default:
-                              break;
+                      message: `Successfully updated ${name} of ${ids.length} transaction${ids.length > 1 ? 's' : ''} to ${displayValueMessage}.`,
+                      messageActions: shouldLinkDisplayValue
+                        ? {
+                            [displayValueString]: () => {
+                              switch (name) {
+                                case 'account':
+                                  void navigate(`/accounts/${String(value)}`);
+                                  break;
+                                case 'category':
+                                  void navigate(`/categories/${String(value)}`);
+                                  break;
+                                case 'payee':
+                                  void navigate(`/payees`);
+                                  break;
+                                default:
+                                  break;
+                              }
+                            },
                           }
-                        },
-                      },
+                        : undefined,
                     });
                   },
                 });
@@ -560,6 +577,12 @@ function SelectedTransactionsFloatingActionBar({
                   name: 'category',
                   text: t('Category'),
                 },
+
+                {
+                  name: 'flag',
+                  text: t('Flag'),
+                },
+
                 // Add support later on until we have more user friendly amount input modal.
                 // {
                 //   name: 'amount',

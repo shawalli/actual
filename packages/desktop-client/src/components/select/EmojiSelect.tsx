@@ -1015,29 +1015,50 @@ export function EmojiSelect({
   const displayValue = shortcodeToNativeUtil(value);
   const showPlaceholder = !value;
   const showRecentEmojis = recentEmojis.length > 0 && !searchQuery.trim();
-  const recentEmojiRow = showRecentEmojis ? (
+  const sectionLabelStyle = {
+    padding: '4px 8px',
+    color: theme.menuAutoCompleteTextSubHeader,
+    userSelect: 'none',
+    ...styles.tinyText,
+  };
+  const recentEmojiSection = showRecentEmojis ? (
+    <>
+      <View style={sectionLabelStyle}>
+        <Trans>RECENTLY USED</Trans>
+      </View>
+      <View
+        data-testid="emoji-select-recent-flags"
+        style={{
+          padding: '0 4px 8px',
+          display: 'grid',
+          gridTemplateColumns: `repeat(${Math.min(
+            recentFlagsLimit,
+            emojisPerRow,
+          )}, ${emojiSize}px)`,
+          gap: `${emojiGap}px`,
+          justifyContent: 'center',
+          outline: 'none',
+        }}
+        onMouseLeave={() => {
+          setHoveredEmoji(null);
+        }}
+      >
+        {recentEmojis.map((emoji, index) =>
+          renderEmojiButton(emoji, index, { isRecent: true }),
+        )}
+      </View>
+    </>
+  ) : null;
+  const flagsSectionLabel = (
     <View
-      data-testid="emoji-select-recent-flags"
       style={{
-        padding: '0 4px 4px',
-        display: 'grid',
-        gridTemplateColumns: `repeat(${Math.min(
-          recentFlagsLimit,
-          emojisPerRow,
-        )}, ${emojiSize}px)`,
-        gap: `${emojiGap}px`,
-        justifyContent: 'center',
-        outline: 'none',
-      }}
-      onMouseLeave={() => {
-        setHoveredEmoji(null);
+        ...sectionLabelStyle,
+        paddingTop: showRecentEmojis ? 15 : 4,
       }}
     >
-      {recentEmojis.map((emoji, index) =>
-        renderEmojiButton(emoji, index, { isRecent: true }),
-      )}
+      <Trans>FLAGS</Trans>
     </View>
-  ) : null;
+  );
 
   return (
     <View style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -1326,7 +1347,9 @@ export function EmojiSelect({
             </View>
           </View>
 
-          {!embedded && recentEmojiRow}
+          {recentEmojiSection}
+
+          {flagsSectionLabel}
 
           {/* Emoji grid */}
           <View
@@ -1374,8 +1397,6 @@ export function EmojiSelect({
               renderEmojiButton(emoji, index),
             )}
           </View>
-
-          {embedded && recentEmojiRow}
 
           <View
             style={{

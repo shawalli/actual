@@ -127,6 +127,7 @@ export function useRecentTransactionFlags(limit: number) {
 
   return {
     recentFlags,
+    hasStoredRecentFlags: storedRecentFlags !== undefined,
     saveRecentFlags,
     recordRecentFlag,
     removeStoredRecentFlags,

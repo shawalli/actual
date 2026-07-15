@@ -109,6 +109,11 @@ import { useSavePayeeLocationMutation } from '#payees';
 import { locationService } from '#payees/location';
 import { aqlQuery } from '#queries/aqlQuery';
 import { useDispatch, useSelector } from '#redux';
+import {
+  MOBILE_RECENT_FLAGS_LIMIT,
+  seedRecentFlagsFromTransactions,
+  useRecentTransactionFlags,
+} from '#transactions/recentFlags';
 import { setLastTransaction } from '#transactions/transactionsSlice';
 import { getStatusLabel } from '#util/schedule';
 
@@ -685,6 +690,12 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const [showHiddenCategories] = useLocalPref('budget.showHiddenCategories');
+    const {
+      recentFlags,
+      hasStoredRecentFlags,
+      saveRecentFlags,
+      recordRecentFlag,
+    } = useRecentTransactionFlags(MOBILE_RECENT_FLAGS_LIMIT);
     const [upcomingLength = '7'] = useSyncedPref(
       'upcomingScheduledTransactionLength',
     );
@@ -695,6 +706,20 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
         ) || [],
       [unserializedTransactions, dateFormat],
     );
+
+    useEffect(() => {
+      if (hasStoredRecentFlags) {
+        return;
+      }
+
+      saveRecentFlags(
+        seedRecentFlagsFromTransactions(
+          unserializedTransactions,
+          MOBILE_RECENT_FLAGS_LIMIT,
+        ),
+      );
+    }, [hasStoredRecentFlags, saveRecentFlags, unserializedTransactions]);
+
     const { data: { grouped: categoryGroups } = { grouped: [] } } =
       useCategories();
     const noteRef = useRef<HTMLInputElement | null>(null);
@@ -774,7 +799,7 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
           );
         }
 
-        await onSave(transactionsToSave);
+        onSave(transactionsToSave);
         void navigate(-1);
       };
 
@@ -1014,8 +1039,10 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
                     name: 'mobile-flag',
                     options: {
                       value: transactionToEdit.flag,
+                      recentFlags,
                       onSave: flag => {
                         void onUpdateInner(transactionToEdit, name, flag);
+                        recordRecentFlag(flag);
                       },
                       onClose: () => {
                         onClearActiveEdit();
@@ -1065,6 +1092,8 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
         onUpdateInner,
         onClearActiveEdit,
         onRequestActiveEdit,
+        recentFlags,
+        recordRecentFlag,
         transaction.id,
         transactions,
         unserializedTransactions,

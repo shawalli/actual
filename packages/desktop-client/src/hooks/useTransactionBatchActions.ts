@@ -27,6 +27,10 @@ import type {
 } from '#modals/modalsSlice';
 import { aqlQuery } from '#queries/aqlQuery';
 import { useDispatch } from '#redux';
+import {
+  MOBILE_RECENT_FLAGS_LIMIT,
+  useRecentTransactionFlags,
+} from '#transactions/recentFlags';
 
 type BatchReconciledReason = Extract<
   ConfirmTransactionEditReason,
@@ -79,6 +83,9 @@ type BatchUnlinkScheduleProps = {
 export function useTransactionBatchActions() {
   const dispatch = useDispatch();
   const { t } = useTranslation();
+  const { recentFlags, recordRecentFlag } = useRecentTransactionFlags(
+    MOBILE_RECENT_FLAGS_LIMIT,
+  );
 
   const onBatchEdit = async ({
     name,
@@ -186,6 +193,10 @@ export function useTransactionBatchActions() {
 
       await send('transactions-batch-update', changes);
 
+      if (name === 'flag' && typeof value === 'string' && value) {
+        recordRecentFlag(value);
+      }
+
       onSuccess?.(ids, name, value, mode);
     };
 
@@ -221,6 +232,8 @@ export function useTransactionBatchActions() {
           modal: {
             name: 'emoji-autocomplete',
             options: {
+              recentFlags,
+              recentFlagsLimit: MOBILE_RECENT_FLAGS_LIMIT,
               onSelect: emoji => onChange(name, emoji),
             },
           },
@@ -238,6 +251,7 @@ export function useTransactionBatchActions() {
               description: t(
                 'Choose one emoji as a flag for the selected transactions.',
               ),
+              recentFlags,
               onSave: flag => onChange(name, flag ?? null),
             },
           },

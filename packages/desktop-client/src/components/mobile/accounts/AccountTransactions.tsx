@@ -12,6 +12,7 @@ import type {
 
 import { useSyncAndDownloadMutation } from '#accounts';
 import { markAccountRead } from '#accounts/accountsSlice';
+import { getTransactionsWithSplitChildren } from '#components/mobile/transactions/getTransactionsWithSplitChildren';
 import { TransactionListWithBalances } from '#components/mobile/transactions/TransactionListWithBalances';
 import { useAccountPreviewTransactions } from '#hooks/useAccountPreviewTransactions';
 import { SchedulesProvider } from '#hooks/useCachedSchedules';
@@ -29,7 +30,6 @@ import { collapseModals, pushModal } from '#modals/modalsSlice';
 import * as queries from '#queries';
 import { useDispatch } from '#redux';
 import * as bindings from '#spreadsheet/bindings';
-import { getTransactionsWithSplitChildren } from '#components/mobile/transactions/getTransactionsWithSplitChildren';
 
 export function AccountTransactions({
   account,

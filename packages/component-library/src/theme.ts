@@ -67,6 +67,7 @@ export const theme = {
   menuAutoCompleteText: 'var(--color-menuAutoCompleteText)',
   menuAutoCompleteTextHover: 'var(--color-menuAutoCompleteTextHover)',
   menuAutoCompleteTextHeader: 'var(--color-menuAutoCompleteTextHeader)',
+  menuAutoCompleteTextSubHeader: 'var(--color-menuAutoCompleteTextSubHeader)',
   menuAutoCompleteItemTextHover: 'var(--color-menuAutoCompleteItemTextHover)',
   menuAutoCompleteItemText: 'var(--color-menuAutoCompleteItemText)',
   modalBackground: 'var(--color-modalBackground)',

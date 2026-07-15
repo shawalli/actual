@@ -140,6 +140,11 @@ import { addNotification } from '#notifications/notificationsSlice';
 import { getPayeesById } from '#payees';
 import { aqlQuery } from '#queries/aqlQuery';
 import { useDispatch } from '#redux';
+import {
+  DESKTOP_RECENT_FLAGS_LIMIT,
+  seedRecentFlagsFromTransactions,
+  useRecentTransactionFlags,
+} from '#transactions/recentFlags';
 import { getStatusLabel } from '#util/schedule';
 
 import {
@@ -985,6 +990,8 @@ type TransactionProps = {
   onDragChange?: OnDragChangeCallback<TransactionEntity>;
   onDrop?: OnDropCallback;
   index: number;
+  recentFlags: string[];
+  onRecordRecentFlag: (flag: string | null | undefined) => void;
 };
 
 const Transaction = memo(function Transaction({
@@ -1046,6 +1053,8 @@ const Transaction = memo(function Transaction({
   onDragChange,
   onDrop,
   index,
+  recentFlags,
+  onRecordRecentFlag,
 }: TransactionProps) {
   const { t } = useTranslation();
 
@@ -1487,9 +1496,12 @@ const Transaction = memo(function Transaction({
           value={transaction.flag || null}
           isOpen={focusedField === 'flag'}
           shouldSaveFromKey={shouldSaveFromKey}
+          recentFlags={recentFlags}
+          recentFlagsLimit={DESKTOP_RECENT_FLAGS_LIMIT}
           inputProps={{ onBlur, onKeyDown, style: inputStyle }}
           onSelect={value => {
             onSave(value ?? '');
+            onRecordRecentFlag(value);
           }}
         />
       )}
@@ -2367,6 +2379,8 @@ type NewTransactionProps = {
     [id: TransactionEntity['id']]: AccountEntity | null;
   };
   showHiddenCategories?: boolean;
+  recentFlags: string[];
+  onRecordRecentFlag: (flag: string | null | undefined) => void;
 };
 function NewTransaction({
   transactions,
@@ -2399,6 +2413,8 @@ function NewTransaction({
   onNotesTagClick,
   balance,
   showHiddenCategories,
+  recentFlags,
+  onRecordRecentFlag,
 }: NewTransactionProps) {
   const error = transactions[0].error;
   const isDeposit = transactions[0].amount > 0;
@@ -2476,6 +2492,8 @@ function NewTransaction({
           showSelection
           allowSplitTransaction
           showHiddenCategories={showHiddenCategories}
+          recentFlags={recentFlags}
+          onRecordRecentFlag={onRecordRecentFlag}
         />
       ))}
       <View
@@ -2609,6 +2627,8 @@ type TransactionTableInnerProps = {
 
   onSort: (field: string, ascDesc: 'asc' | 'desc') => void;
   showHiddenCategories?: boolean;
+  recentFlags: string[];
+  onRecordRecentFlag: (flag: string | null | undefined) => void;
   // Drag and drop props
   canDrag?: boolean;
   draggedId?: TransactionEntity['id'] | null;
@@ -2841,6 +2861,8 @@ function TransactionTableInner({
         onNavigateToTransferAccount={onNavigateToTransferAccount}
         onNavigateToSchedule={onNavigateToSchedule}
         onNotesTagClick={onNotesTagClick}
+        recentFlags={props.recentFlags}
+        onRecordRecentFlag={props.onRecordRecentFlag}
         splitError={
           hasSplitError ? (
             <TransactionError
@@ -2940,6 +2962,8 @@ function TransactionTableInner({
               onNotesTagClick={onNotesTagClick}
               onDistributeRemainder={props.onDistributeRemainder}
               showHiddenCategories={showHiddenCategories}
+              recentFlags={props.recentFlags}
+              onRecordRecentFlag={props.onRecordRecentFlag}
             />
           </View>
         )}
@@ -3058,6 +3082,12 @@ export const TransactionTable = forwardRef(
 
     const dispatch = useDispatch();
     const [showHiddenCategories] = useLocalPref('budget.showHiddenCategories');
+    const {
+      recentFlags,
+      hasStoredRecentFlags,
+      saveRecentFlags,
+      recordRecentFlag,
+    } = useRecentTransactionFlags(DESKTOP_RECENT_FLAGS_LIMIT);
     const [newTransactions, setNewTransactions] = useState<TransactionEntity[]>(
       [],
     );
@@ -3065,6 +3095,19 @@ export const TransactionTable = forwardRef(
     const splitsExpanded = useSplitsExpanded();
     const splitsExpandedDispatch = splitsExpanded.dispatch;
     const prevSplitsExpanded = useRef<SplitsExpandedContextValue | null>(null);
+
+    useEffect(() => {
+      if (hasStoredRecentFlags) {
+        return;
+      }
+
+      saveRecentFlags(
+        seedRecentFlagsFromTransactions(
+          props.transactions,
+          DESKTOP_RECENT_FLAGS_LIMIT,
+        ),
+      );
+    }, [hasStoredRecentFlags, props.transactions, saveRecentFlags]);
 
     // Drag state for transaction reordering
     const [draggedId, setDraggedId] = useState<TransactionEntity['id'] | null>(
@@ -3872,6 +3915,8 @@ export const TransactionTable = forwardRef(
             showSelection={props.showSelection}
             allowSplitTransaction={props.allowSplitTransaction}
             showHiddenCategories={showHiddenCategories}
+            recentFlags={recentFlags}
+            onRecordRecentFlag={recordRecentFlag}
             canDrag={canDrag}
             draggedId={draggedId}
             draggedParentId={draggedParentId}

@@ -661,4 +661,27 @@ describe('EmojiSelect', () => {
       expect(screen.getByText('🔵')).toBeInTheDocument();
     });
   });
+
+  it('renders section headers for recent and regular flags', async () => {
+    render(
+      <EmojiSelect
+        {...defaultProps}
+        isOpen
+        recentFlags={[':large_blue_circle:']}
+        recentFlagsLimit={7}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('RECENTLY USED')).toBeInTheDocument();
+      expect(screen.getByText('FLAGS')).toBeInTheDocument();
+    });
+
+    expect(
+      screen
+        .getByText('RECENTLY USED')
+        .compareDocumentPosition(screen.getByText('FLAGS')),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
 });

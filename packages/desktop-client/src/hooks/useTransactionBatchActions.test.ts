@@ -27,6 +27,7 @@ vi.mock('react-i18next', () => ({
 
 const mockSend = vi.mocked(send);
 const mockAqlQuery = vi.mocked(aqlQuery);
+const recentFlagsStorageKey = 'undefined-transactions.recentFlags';
 
 function makeQueryResult<T>(data: T) {
   return { data, dependencies: [] };
@@ -77,6 +78,10 @@ function expectModal<N extends Modal['name']>(
 }
 
 describe('useTransactionBatchActions - flag bulk edit', () => {
+  beforeEach(() => {
+    localStorage.removeItem(recentFlagsStorageKey);
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -97,6 +102,26 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     const { modalStack } = store.getState().modals;
     expect(modalStack).toHaveLength(1);
     expect(modalStack[0].name).toBe('emoji-autocomplete');
+  });
+
+  it('passes recent flags to emoji-autocomplete modal', async () => {
+    localStorage.setItem(recentFlagsStorageKey, JSON.stringify([':100:']));
+    const tx = makeTransaction({ id: 'tx-1' });
+    mockNonReconciledBatchEditQueries([tx]);
+
+    const { hook, store } = renderBatchActionsHook();
+
+    await act(async () => {
+      await hook.result.current.onBatchEdit({
+        name: 'flag',
+        ids: ['tx-1'],
+      });
+    });
+
+    const { modalStack } = store.getState().modals;
+    expectModal(modalStack[0], 'emoji-autocomplete');
+    expect(modalStack[0].options.recentFlags).toEqual([':100:']);
+    expect(modalStack[0].options.recentFlagsLimit).toBe(6);
   });
 
   it('dispatches mobile flag modal when requested for bulk-editing flag', async () => {
@@ -120,6 +145,58 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     expect(modalStack[0].options.description).toBe(
       'Choose one emoji as a flag for the selected transactions.',
     );
+    expect(modalStack[0].options.recentFlags).toEqual([]);
+  });
+
+  it('passes recent flags to mobile flag modal when requested for bulk-editing flag', async () => {
+    localStorage.setItem(recentFlagsStorageKey, JSON.stringify([':100:']));
+    const tx = makeTransaction({ id: 'tx-1' });
+    mockNonReconciledBatchEditQueries([tx]);
+
+    const { hook, store } = renderBatchActionsHook();
+
+    await act(async () => {
+      await hook.result.current.onBatchEdit({
+        name: 'flag',
+        ids: ['tx-1'],
+        flagInputMode: 'mobile-flag',
+      });
+    });
+
+    const { modalStack } = store.getState().modals;
+    expectModal(modalStack[0], 'mobile-flag');
+    expect(modalStack[0].options.recentFlags).toEqual([':100:']);
+  });
+
+  it('records recent flags when saving from mobile flag bulk edit', async () => {
+    const tx = makeTransaction({ id: 'tx-1' });
+    mockNonReconciledBatchEditQueries([tx]);
+
+    const { hook, store } = renderBatchActionsHook();
+
+    await act(async () => {
+      await hook.result.current.onBatchEdit({
+        name: 'flag',
+        ids: ['tx-1'],
+        flagInputMode: 'mobile-flag',
+      });
+    });
+
+    const { modalStack } = store.getState().modals;
+    const modal = modalStack[0];
+    expectModal(modal, 'mobile-flag');
+
+    await act(async () => {
+      modal.options.onSave(':large_blue_circle:');
+    });
+
+    expect(mockSend).toHaveBeenCalledWith(
+      'transactions-batch-update',
+      expect.anything(),
+    );
+    expect(
+      JSON.parse(localStorage.getItem(recentFlagsStorageKey) ?? '[]'),
+    ).toEqual([':large_blue_circle:']);
   });
 
   it('does not dispatch edit-field modal when bulk-editing flag', async () => {
@@ -187,6 +264,36 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
         t => t.id === 'tx-child' && t.flag === ':large_blue_circle:',
       ),
     ).toBe(true);
+    expect(
+      JSON.parse(localStorage.getItem(recentFlagsStorageKey) ?? '[]'),
+    ).toEqual([':large_blue_circle:']);
+  });
+
+  it('does not update recent flags when bulk-clearing flags', async () => {
+    localStorage.setItem(recentFlagsStorageKey, JSON.stringify([':100:']));
+    const tx = makeTransaction({ id: 'tx-1', flag: ':100:' });
+    mockNonReconciledBatchEditQueries([tx]);
+
+    const { hook, store } = renderBatchActionsHook();
+
+    await act(async () => {
+      await hook.result.current.onBatchEdit({
+        name: 'flag',
+        ids: ['tx-1'],
+      });
+    });
+
+    const { modalStack } = store.getState().modals;
+    const modal = modalStack[0];
+    expectModal(modal, 'emoji-autocomplete');
+
+    await act(async () => {
+      modal.options.onSelect(null);
+    });
+
+    expect(
+      JSON.parse(localStorage.getItem(recentFlagsStorageKey) ?? '[]'),
+    ).toEqual([':100:']);
   });
 
   it('does not edit fetched split children that were not explicitly selected', async () => {

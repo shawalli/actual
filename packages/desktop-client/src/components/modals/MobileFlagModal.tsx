@@ -19,6 +19,7 @@ import {
   ModalTitle,
 } from '#components/common/Modal';
 import type { Modal as ModalType } from '#modals/modalsSlice';
+import { MOBILE_RECENT_FLAGS_LIMIT } from '#transactions/recentFlags';
 
 type MobileFlagModalProps = Extract<
   ModalType,
@@ -40,7 +41,12 @@ function getGraphemeClusters(value: string) {
 }
 
 function isEmojiLike(value: string) {
-  return /[^\x00-\x7F]/u.test(value) && emojiLikeRegex.test(value);
+  return (
+    Array.from(value).some(char => {
+      const codePoint = char.codePointAt(0);
+      return codePoint != null && codePoint > 0x7f;
+    }) && emojiLikeRegex.test(value)
+  );
 }
 
 export function sanitizeMobileFlagInput(value: string) {
@@ -50,6 +56,7 @@ export function sanitizeMobileFlagInput(value: string) {
 export function MobileFlagModal({
   value,
   description,
+  recentFlags = [],
   onSave,
   onClose,
 }: MobileFlagModalProps) {
@@ -111,6 +118,46 @@ export function MobileFlagModal({
                   fontSize: 28,
                 }}
               />
+              {recentFlags.length > 0 && (
+                <View
+                  data-testid="mobile-flag-recent-flags"
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    justifyContent: 'center',
+                  }}
+                >
+                  {recentFlags.slice(0, MOBILE_RECENT_FLAGS_LIMIT).map(flag => {
+                    const nativeRecentFlag = shortcodeToNative(flag);
+                    if (!nativeRecentFlag) {
+                      return null;
+                    }
+
+                    return (
+                      <Button
+                        key={flag}
+                        aria-label={t('Use {{flag}} flag', {
+                          flag: nativeRecentFlag,
+                        })}
+                        onPress={() => {
+                          setNativeFlag(
+                            sanitizeMobileFlagInput(nativeRecentFlag),
+                          );
+                        }}
+                        style={{
+                          width: styles.mobileMinHeight,
+                          height: styles.mobileMinHeight,
+                          padding: 0,
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Text style={{ fontSize: 24 }}>{nativeRecentFlag}</Text>
+                      </Button>
+                    );
+                  })}
+                </View>
+              )}
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Button
                   variant="primary"

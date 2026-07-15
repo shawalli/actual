@@ -42,6 +42,8 @@ import { tagQueries } from '#tags/queries';
 
 import { TransactionTable } from './TransactionsTable';
 
+const recentFlagsStorageKey = 'undefined-transactions.recentFlags';
+
 const queryClient = createTestQueryClient();
 
 vi.mock(
@@ -325,6 +327,7 @@ function initBasicServer() {
 
 beforeEach(() => {
   schedules = [];
+  localStorage.removeItem(recentFlagsStorageKey);
   initBasicServer();
 });
 
@@ -675,6 +678,56 @@ describe('Transactions', () => {
     await waitFor(() => {
       expect(getTransactions()[0].flag).toBe('');
       expect(getTransactions()[1].flag).toBe(':grinning:');
+    });
+  });
+
+  test('seeds recent flags from loaded transactions when storage is missing', async () => {
+    const transactions = generateTransactions(3);
+    transactions[0].flag = ':100:';
+    transactions[1].flag = null;
+    transactions[2].flag = ':grinning:';
+
+    renderTransactions({ transactions });
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(localStorage.getItem(recentFlagsStorageKey) ?? '[]'),
+      ).toEqual([':100:', ':grinning:']);
+    });
+  });
+
+  test('does not reseed recent flags when storage already exists', async () => {
+    localStorage.setItem(recentFlagsStorageKey, JSON.stringify([':grinning:']));
+
+    const transactions = generateTransactions(2);
+    transactions[0].flag = ':100:';
+
+    renderTransactions({ transactions });
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(localStorage.getItem(recentFlagsStorageKey) ?? '[]'),
+      ).toEqual([':grinning:']);
+    });
+  });
+
+  test('records recent flags after a transaction flag is selected', async () => {
+    localStorage.setItem(recentFlagsStorageKey, JSON.stringify([':100:']));
+    const transactions = generateTransactions(2);
+    transactions[1].flag = null;
+
+    const { container } = renderTransactions({ transactions });
+
+    await editField(container, 'flag', 1);
+    await waitFor(() => {
+      expect(screen.getByText('😀')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByText('😀').closest('button')!);
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(localStorage.getItem(recentFlagsStorageKey) ?? '[]'),
+      ).toEqual([':grinning:', ':100:']);
     });
   });
 

@@ -83,6 +83,7 @@ import {
   ToggleField,
 } from '#components/mobile/MobileForms';
 import { getPrettyPayee } from '#components/mobile/utils';
+import { GiftCardIcon } from '#components/GiftCardIcon';
 import { MobilePageHeader, Page } from '#components/Page';
 import { shouldApplyRuleChange } from '#components/transactions/table/utils';
 import { createSingleTimeScheduleFromTransaction } from '#components/transactions/TransactionList';
@@ -1453,7 +1454,14 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
           ))}
 
           {transaction.amount !== 0 && childTransactions.length === 0 && (
-            <View style={{ alignItems: 'center' }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 48,
+              }}
+            >
               <Button
                 variant="bare"
                 isDisabled={!!editingField}
@@ -1480,6 +1488,32 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
                   }}
                 >
                   <Trans>Split</Trans>
+                </Text>
+              </Button>
+              <Button
+                variant="bare"
+                isDisabled={!!editingField}
+                style={{
+                  height: 40,
+                  borderWidth: 0,
+                  marginTop: 10,
+                  backgroundColor: 'transparent',
+                }}
+                data-testid="gift-card-action"
+              >
+                <GiftCardIcon
+                  width={17}
+                  height={17}
+                  style={{ color: theme.formLabelText }}
+                />
+                <Text
+                  style={{
+                    marginLeft: 5,
+                    userSelect: 'none',
+                    color: theme.formLabelText,
+                  }}
+                >
+                  <Trans>Gift Card</Trans>
                 </Text>
               </Button>
             </View>

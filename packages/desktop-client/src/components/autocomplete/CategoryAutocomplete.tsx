@@ -12,7 +12,6 @@ import { Trans, useTranslation } from 'react-i18next';
 
 import { useResponsive } from '@actual-app/components/hooks/useResponsive';
 import { SvgSplit } from '@actual-app/components/icons/v0';
-import { SvgGift } from '@actual-app/components/icons/v1';
 import { styles } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { TextOneLine } from '@actual-app/components/text-one-line';
@@ -28,6 +27,7 @@ import { css, cx } from '@emotion/css';
 import { useEnvelopeSheetValue } from '#components/budget/envelope/EnvelopeBudgetComponents';
 import { makeAmountFullStyle } from '#components/budget/util';
 import { FinancialText } from '#components/FinancialText';
+import { GiftCardIcon } from '#components/GiftCardIcon';
 import { useCategories } from '#hooks/useCategories';
 import { useSheetValue } from '#hooks/useSheetValue';
 import { useSyncedPref } from '#hooks/useSyncedPref';
@@ -481,7 +481,7 @@ function GiftCardButton({
       {...props}
     >
       <Text style={{ lineHeight: 0 }}>
-        <SvgGift width={10} height={10} style={{ marginRight: 5 }} />
+        <GiftCardIcon width={10} height={10} style={{ marginRight: 5 }} />
       </Text>
       {label ?? <Trans>Gift Card</Trans>}
     </View>

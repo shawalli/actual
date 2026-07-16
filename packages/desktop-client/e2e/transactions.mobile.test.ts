@@ -79,6 +79,9 @@ test.describe('Mobile Transactions', () => {
 - button "Split" [disabled]:
   - img
   - text: Split
+- button "Gift Card" [disabled]:
+  - img
+  - text: Gift Card
 - text: Account
 - button "HSBC" [disabled]:
   - img

@@ -20,7 +20,7 @@ This project is a soft fork of actualbudget/actual ("the root project"). It cont
   - [x] full mobile support
   - [ ] rules/schedules (coming soon)
 
-- **Gift-Card Split Transactions** - Special split-transaction type that simplifies the process of using gift cards. When selected, creates a split transaction where the first split contains the gift card, categorized as Income. Every time a split transaction is added with a payment/deposit, the gift-card split transaction updates its payment/deposit to offset the new difference. This process works both for spending from a gift card and returning money to a gift card (e.g. returning an item bought with a gift card.) The gift-card logic enables gift cards to be treated like just-in-time income, so that users do not need to manage long-lived accounts for gift cards.
+- **Gift-Card Split Transactions** - Special split-transaction type that simplifies the process of using gift cards. When selected, creates a split transaction where the first split contains the gift card, categorized as Income. Every time a split transaction is added with a payment/deposit, the gift-card split transaction updates its payment/deposit to offset the new difference. This process works both for spending from a gift card and returning money to a gift card (e.g. returning an item bought with a gift card.) The gift-card logic enables gift cards to be treated like just-in-time income, so that users do not need to manage long-lived accounts for gift cards. Supported on mobile as well.
 
 ### Versioning
 

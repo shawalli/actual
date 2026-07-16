@@ -42,8 +42,10 @@ import * as monthUtils from '@actual-app/core/shared/months';
 import { q } from '@actual-app/core/shared/query';
 import { getUpcomingDays } from '@actual-app/core/shared/schedules';
 import {
+  addGiftCardSplitTransaction,
   addSplitTransaction,
   deleteTransaction,
+  hasGiftCardChild,
   makeEmptySplitSubtransactions,
   realizeTempTransactions,
   splitTransaction,
@@ -63,6 +65,7 @@ import {
 import type {
   AccountEntity,
   CategoryEntity,
+  CategoryGroupEntity,
   PayeeEntity,
   TransactionEntity,
 } from '@actual-app/core/types/models';
@@ -184,6 +187,17 @@ export function lookupName(items: CategoryEntity[], id?: CategoryEntity['id']) {
     return null;
   }
   return items.find(item => item.id === id)?.name;
+}
+
+function getGiftCardCategoryId(categoryGroups: CategoryGroupEntity[]) {
+  const incomeCategories =
+    categoryGroups.find(group => group.is_income)?.categories ?? [];
+
+  return (
+    incomeCategories.find(
+      category => !category.hidden && category.name.toLowerCase() === 'income',
+    )?.id ?? incomeCategories.find(category => !category.hidden)?.id
+  );
 }
 
 const dropdownChevron = (
@@ -663,6 +677,10 @@ type TransactionEditInnerProps = {
   onDelete: (id: TransactionEntity['id']) => void;
   onSplit: (id: TransactionEntity['id']) => void;
   onAddSplit: (id: TransactionEntity['id']) => void;
+  onAddGiftCardSplit: (
+    id: TransactionEntity['id'],
+    giftCardCategory?: TransactionEntity['category'],
+  ) => void;
   shouldShowSaveLocation?: boolean;
   onSaveLocation?: () => void;
   onSelectNearestPayee?: () => void;
@@ -683,6 +701,7 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
     onDelete,
     onSplit,
     onAddSplit,
+    onAddGiftCardSplit,
     shouldShowSaveLocation,
     onSaveLocation,
     onSelectNearestPayee,
@@ -735,6 +754,10 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
     }, []);
 
     const [transaction, ...childTransactions] = transactions;
+    const hasGiftCardSplit = hasGiftCardChild({
+      ...transaction,
+      subtransactions: childTransactions,
+    });
 
     const { editingField, onRequestActiveEdit, onClearActiveEdit } =
       useSingleActiveEditForm()!;
@@ -1453,71 +1476,82 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
             />
           ))}
 
-          {transaction.amount !== 0 && childTransactions.length === 0 && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 48,
-              }}
-            >
-              <Button
-                variant="bare"
-                isDisabled={!!editingField}
+          {transaction.amount !== 0 &&
+            (childTransactions.length === 0 || !hasGiftCardSplit) && (
+              <View
                 style={{
-                  height: 40,
-                  borderWidth: 0,
-                  marginLeft: styles.mobileEditingPadding,
-                  marginRight: styles.mobileEditingPadding,
-                  marginTop: 10,
-                  backgroundColor: 'transparent',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 48,
                 }}
-                onPress={() => onSplit(transaction.id)}
               >
-                <SvgSplit
-                  width={17}
-                  height={17}
-                  style={{ color: theme.formLabelText }}
-                />
-                <Text
-                  style={{
-                    marginLeft: 5,
-                    userSelect: 'none',
-                    color: theme.formLabelText,
-                  }}
-                >
-                  <Trans>Split</Trans>
-                </Text>
-              </Button>
-              <Button
-                variant="bare"
-                isDisabled={!!editingField}
-                style={{
-                  height: 40,
-                  borderWidth: 0,
-                  marginTop: 10,
-                  backgroundColor: 'transparent',
-                }}
-                data-testid="gift-card-action"
-              >
-                <GiftCardIcon
-                  width={17}
-                  height={17}
-                  style={{ color: theme.formLabelText }}
-                />
-                <Text
-                  style={{
-                    marginLeft: 5,
-                    userSelect: 'none',
-                    color: theme.formLabelText,
-                  }}
-                >
-                  <Trans>Gift Card</Trans>
-                </Text>
-              </Button>
-            </View>
-          )}
+                {childTransactions.length === 0 && (
+                  <Button
+                    variant="bare"
+                    isDisabled={!!editingField}
+                    style={{
+                      height: 40,
+                      borderWidth: 0,
+                      marginLeft: styles.mobileEditingPadding,
+                      marginRight: styles.mobileEditingPadding,
+                      marginTop: 10,
+                      backgroundColor: 'transparent',
+                    }}
+                    onPress={() => onSplit(transaction.id)}
+                  >
+                    <SvgSplit
+                      width={17}
+                      height={17}
+                      style={{ color: theme.formLabelText }}
+                    />
+                    <Text
+                      style={{
+                        marginLeft: 5,
+                        userSelect: 'none',
+                        color: theme.formLabelText,
+                      }}
+                    >
+                      <Trans>Split</Trans>
+                    </Text>
+                  </Button>
+                )}
+                {!hasGiftCardSplit && (
+                  <Button
+                    variant="bare"
+                    isDisabled={!!editingField}
+                    style={{
+                      height: 40,
+                      borderWidth: 0,
+                      marginTop: 10,
+                      backgroundColor: 'transparent',
+                    }}
+                    data-testid="gift-card-action"
+                    onPress={() =>
+                      onAddGiftCardSplit(
+                        transaction.id,
+                        getGiftCardCategoryId(categoryGroups),
+                      )
+                    }
+                  >
+                    <GiftCardIcon
+                      width={17}
+                      height={17}
+                      style={{ color: theme.formLabelText }}
+                    />
+                    <Text
+                      style={{
+                        marginLeft: 5,
+                        userSelect: 'none',
+                        color: theme.formLabelText,
+                      }}
+                    >
+                      <Trans>Gift Card</Trans>
+                    </Text>
+                  </Button>
+                )}
+              </View>
+            )}
 
           <View>
             <FieldLabel title={t('Account')} />
@@ -2102,6 +2136,21 @@ function TransactionEditUnconnected({
     [transactions],
   );
 
+  const onAddGiftCardSplit = useCallback(
+    (
+      id: TransactionEntity['id'],
+      giftCardCategory?: TransactionEntity['category'],
+    ) => {
+      const changes = addGiftCardSplitTransaction(
+        transactions,
+        id,
+        giftCardCategory,
+      );
+      setTransactions(changes.data);
+    },
+    [transactions],
+  );
+
   const onSplit = useCallback(
     (id: TransactionEntity['id']) => {
       const changes = splitTransaction(
@@ -2273,6 +2322,7 @@ function TransactionEditUnconnected({
         onDelete={onDelete}
         onSplit={onSplit}
         onAddSplit={onAddSplit}
+        onAddGiftCardSplit={onAddGiftCardSplit}
         shouldShowSaveLocation={shouldShowSaveLocation}
         onSaveLocation={onSaveLocation}
         onSelectNearestPayee={onSelectNearestPayee}

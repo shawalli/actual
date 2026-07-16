@@ -13,7 +13,7 @@ This project is a soft fork of actualbudget/actual ("the root project"). It cont
 ### Unique Features
 
 - **Transaction Flags** - Short-lived flags that can further organize and isolate transactions. Useful for things like balancing a budget, finding a missing transaction, managing submissions for reimbursements to your company, healthcare savings account, etc. Transaction flags are a first class transaction fields, with support for:
-  - [ ] favorite/recently-used flags
+  - [x] recently-used flags
   - [x] bulk-editing
   - [x] filtering
   - [x] split-transactions

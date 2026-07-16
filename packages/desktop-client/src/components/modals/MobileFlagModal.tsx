@@ -71,7 +71,7 @@ export function MobileFlagModal({
       onClose={onClose}
       containerProps={{
         style: {
-          backgroundColor: theme.modalBackground,
+          backgroundColor: theme.buttonNormalBackground,
           maxWidth: 360,
           minWidth: '90vw',
         },
@@ -87,7 +87,74 @@ export function MobileFlagModal({
               rightContent={<ModalCloseButton onPress={closeModal} />}
             />
             <View style={{ gap: 14 }}>
-              <Text>
+              {recentFlags.length > 0 && (
+                <View style={{ alignItems: 'center' }}>
+                  <Text
+                    style={{
+                      color: theme.pageText,
+                      marginTop: 16,
+                      ...styles.mediumText,
+                    }}
+                  >
+                    <Trans>Recently Used</Trans>
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor: theme.menuItemBackgroundHover,
+                      border: `1px solid ${theme.tableBorder}`,
+                      borderRadius: 4,
+                      gap: 8,
+                      marginTop: 6,
+                      marginBottom: 20,
+                      padding: 8,
+                    }}
+                  >
+                    <View
+                      data-testid="mobile-flag-recent-flags"
+                      style={{
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: 8,
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {recentFlags
+                        .slice(0, MOBILE_RECENT_FLAGS_LIMIT)
+                        .map(flag => {
+                          const nativeRecentFlag = shortcodeToNative(flag);
+                          if (!nativeRecentFlag) {
+                            return null;
+                          }
+
+                          return (
+                            <Button
+                              key={flag}
+                              aria-label={t('Use {{flag}} flag', {
+                                flag: nativeRecentFlag,
+                              })}
+                              onPress={() => {
+                                setNativeFlag(
+                                  sanitizeMobileFlagInput(nativeRecentFlag),
+                                );
+                              }}
+                              style={{
+                                width: styles.mobileMinHeight,
+                                height: styles.mobileMinHeight,
+                                padding: 0,
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <Text style={{ fontSize: 24 }}>
+                                {nativeRecentFlag}
+                              </Text>
+                            </Button>
+                          );
+                        })}
+                    </View>
+                  </View>
+                </View>
+              )}
+              <Text style={{ textAlign: 'center' }}>
                 {description ?? (
                   <Trans>
                     Choose one emoji as a flag for this transaction.
@@ -118,47 +185,22 @@ export function MobileFlagModal({
                   fontSize: 28,
                 }}
               />
-              {recentFlags.length > 0 && (
-                <View
-                  data-testid="mobile-flag-recent-flags"
-                  style={{
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    gap: 8,
-                    justifyContent: 'center',
+              <View
+                style={{
+                  flexDirection: 'row',
+                  gap: 8,
+                  marginTop: 30,
+                }}
+              >
+                <Button
+                  style={{ flex: 1, height: styles.mobileMinHeight }}
+                  onPress={async () => {
+                    await onSave(null);
+                    closeModal();
                   }}
                 >
-                  {recentFlags.slice(0, MOBILE_RECENT_FLAGS_LIMIT).map(flag => {
-                    const nativeRecentFlag = shortcodeToNative(flag);
-                    if (!nativeRecentFlag) {
-                      return null;
-                    }
-
-                    return (
-                      <Button
-                        key={flag}
-                        aria-label={t('Use {{flag}} flag', {
-                          flag: nativeRecentFlag,
-                        })}
-                        onPress={() => {
-                          setNativeFlag(
-                            sanitizeMobileFlagInput(nativeRecentFlag),
-                          );
-                        }}
-                        style={{
-                          width: styles.mobileMinHeight,
-                          height: styles.mobileMinHeight,
-                          padding: 0,
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Text style={{ fontSize: 24 }}>{nativeRecentFlag}</Text>
-                      </Button>
-                    );
-                  })}
-                </View>
-              )}
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Trans>Remove</Trans>
+                </Button>
                 <Button
                   variant="primary"
                   style={{ flex: 1, height: styles.mobileMinHeight }}
@@ -170,15 +212,6 @@ export function MobileFlagModal({
                   }}
                 >
                   <Trans>Save</Trans>
-                </Button>
-                <Button
-                  style={{ flex: 1, height: styles.mobileMinHeight }}
-                  onPress={async () => {
-                    await onSave(null);
-                    closeModal();
-                  }}
-                >
-                  <Trans>Remove</Trans>
                 </Button>
               </View>
             </View>

@@ -52,7 +52,7 @@ describe('MobileFlagModal', () => {
     expect(onSave).toHaveBeenCalledWith(null);
   });
 
-  it('shows recent flags between the input and buttons and applies selected recent flag', async () => {
+  it('shows a recently used section before the input and applies selected recent flag', async () => {
     const onSave = vi.fn();
     render(
       <TestProviders>
@@ -65,11 +65,20 @@ describe('MobileFlagModal', () => {
     );
 
     const input = screen.getByLabelText('Flag emoji');
+    const recentFlagsHeader = screen.getByText('Recently Used');
     const recentFlags = screen.getByTestId('mobile-flag-recent-flags');
-    expect(input.compareDocumentPosition(recentFlags)).toBe(
+    const removeButton = screen.getByRole('button', { name: 'Remove' });
+    const saveButton = screen.getByRole('button', { name: 'Save' });
+    expect(recentFlagsHeader.compareDocumentPosition(recentFlags)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
-    expect(recentFlags.compareDocumentPosition(screen.getByText('Save'))).toBe(
+    expect(recentFlags.compareDocumentPosition(input)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(input.compareDocumentPosition(removeButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(removeButton.compareDocumentPosition(saveButton)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
 

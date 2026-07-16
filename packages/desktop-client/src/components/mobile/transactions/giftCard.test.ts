@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
-import { getGiftCardCategoryId, shouldShowGiftCardActions } from './giftCard';
+import {
+  getGiftCardActionVisibility,
+  getGiftCardCategoryId,
+  shouldShowGiftCardActions,
+} from './giftCard';
 
 describe('getGiftCardCategoryId', () => {
   test('prefers an active Income category', () => {
@@ -86,5 +90,46 @@ describe('shouldShowGiftCardActions', () => {
         transactions: [parent, giftCardChild, { ...spendingChild, amount: 0 }],
       }),
     ).toBe(false);
+  });
+});
+
+describe('getGiftCardActionVisibility', () => {
+  test('shows Gift Card without Split for a zero-amount transaction', () => {
+    expect(
+      getGiftCardActionVisibility({
+        amount: 0,
+        childTransactionCount: 0,
+        hasGiftCardSplit: false,
+      }),
+    ).toEqual({
+      showGiftCardAction: true,
+      showSplitAction: false,
+    });
+  });
+
+  test('shows Split and Gift Card when the amount is nonzero', () => {
+    expect(
+      getGiftCardActionVisibility({
+        amount: -12.34,
+        childTransactionCount: 0,
+        hasGiftCardSplit: false,
+      }),
+    ).toEqual({
+      showGiftCardAction: true,
+      showSplitAction: true,
+    });
+  });
+
+  test('hides both actions once a gift-card split exists', () => {
+    expect(
+      getGiftCardActionVisibility({
+        amount: 0,
+        childTransactionCount: 2,
+        hasGiftCardSplit: true,
+      }),
+    ).toEqual({
+      showGiftCardAction: false,
+      showSplitAction: false,
+    });
   });
 });

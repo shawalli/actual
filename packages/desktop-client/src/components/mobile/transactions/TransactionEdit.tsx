@@ -124,7 +124,11 @@ import { setLastTransaction } from '#transactions/transactionsSlice';
 import { getStatusLabel } from '#util/schedule';
 
 import { AmountInput } from './AmountInput';
-import { getGiftCardCategoryId, shouldShowGiftCardActions } from './giftCard';
+import {
+  getGiftCardActionVisibility,
+  getGiftCardCategoryId,
+  shouldShowGiftCardActions,
+} from './giftCard';
 import { SplitAmountInput } from './SplitAmountInput';
 
 function getFieldName(transactionId: TransactionEntity['id'], field: string) {
@@ -894,6 +898,13 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
       ...transaction,
       subtransactions: childTransactions,
     });
+    const { showGiftCardAction, showSplitAction } = getGiftCardActionVisibility(
+      {
+        amount: transaction.amount,
+        childTransactionCount: childTransactions.length,
+        hasGiftCardSplit,
+      },
+    );
 
     const { editingField, onRequestActiveEdit, onClearActiveEdit } =
       useSingleActiveEditForm()!;
@@ -1625,82 +1636,79 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
             />
           ))}
 
-          {transaction.amount !== 0 &&
-            (childTransactions.length === 0 || !hasGiftCardSplit) && (
-              <View
+          {showGiftCardAction && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 48,
+              }}
+            >
+              {showSplitAction && (
+                <Button
+                  variant="bare"
+                  isDisabled={!!editingField}
+                  style={{
+                    height: 40,
+                    borderWidth: 0,
+                    marginLeft: styles.mobileEditingPadding,
+                    marginRight: styles.mobileEditingPadding,
+                    marginTop: 10,
+                    backgroundColor: 'transparent',
+                  }}
+                  onPress={() => onSplit(transaction.id)}
+                >
+                  <SvgSplit
+                    width={17}
+                    height={17}
+                    style={{ color: theme.formLabelText }}
+                  />
+                  <Text
+                    style={{
+                      marginLeft: 5,
+                      userSelect: 'none',
+                      color: theme.formLabelText,
+                    }}
+                  >
+                    <Trans>Split</Trans>
+                  </Text>
+                </Button>
+              )}
+              <Button
+                variant="bare"
+                isDisabled={!!editingField}
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 48,
+                  height: 40,
+                  borderWidth: 0,
+                  marginTop: 10,
+                  backgroundColor: 'transparent',
                 }}
+                data-testid="gift-card-action"
+                onPress={() =>
+                  onAddGiftCardSplit(
+                    transaction.id,
+                    getGiftCardCategoryId(categoryGroups),
+                  )
+                }
               >
-                {childTransactions.length === 0 && (
-                  <Button
-                    variant="bare"
-                    isDisabled={!!editingField}
-                    style={{
-                      height: 40,
-                      borderWidth: 0,
-                      marginLeft: styles.mobileEditingPadding,
-                      marginRight: styles.mobileEditingPadding,
-                      marginTop: 10,
-                      backgroundColor: 'transparent',
-                    }}
-                    onPress={() => onSplit(transaction.id)}
-                  >
-                    <SvgSplit
-                      width={17}
-                      height={17}
-                      style={{ color: theme.formLabelText }}
-                    />
-                    <Text
-                      style={{
-                        marginLeft: 5,
-                        userSelect: 'none',
-                        color: theme.formLabelText,
-                      }}
-                    >
-                      <Trans>Split</Trans>
-                    </Text>
-                  </Button>
-                )}
-                {!hasGiftCardSplit && (
-                  <Button
-                    variant="bare"
-                    isDisabled={!!editingField}
-                    style={{
-                      height: 40,
-                      borderWidth: 0,
-                      marginTop: 10,
-                      backgroundColor: 'transparent',
-                    }}
-                    data-testid="gift-card-action"
-                    onPress={() =>
-                      onAddGiftCardSplit(
-                        transaction.id,
-                        getGiftCardCategoryId(categoryGroups),
-                      )
-                    }
-                  >
-                    <GiftCardIcon
-                      width={17}
-                      height={17}
-                      style={{ color: theme.formLabelText }}
-                    />
-                    <Text
-                      style={{
-                        marginLeft: 5,
-                        userSelect: 'none',
-                        color: theme.formLabelText,
-                      }}
-                    >
-                      <Trans>Gift Card</Trans>
-                    </Text>
-                  </Button>
-                )}
-              </View>
-            )}
+                <GiftCardIcon
+                  width={17}
+                  height={17}
+                  style={{ color: theme.formLabelText }}
+                />
+                <Text
+                  style={{
+                    marginLeft: 5,
+                    userSelect: 'none',
+                    color: theme.formLabelText,
+                  }}
+                >
+                  <Trans>Gift Card</Trans>
+                </Text>
+              </Button>
+            </View>
+          )}
 
           <View>
             <FieldLabel title={t('Account')} />

@@ -55,6 +55,22 @@ test.describe('Mobile Transactions', () => {
     await expect(page).toMatchThemeScreenshots();
   });
 
+  test('shows Gift Card before Split for a zero-amount transaction', async () => {
+    const transactionEntryPage = await navigation.goToTransactionEntryPage();
+
+    await expect(page.getByTestId('gift-card-action')).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Split', exact: true }),
+    ).toHaveCount(0);
+
+    await transactionEntryPage.fillAmount('2.00');
+
+    await expect(
+      page.getByRole('button', { name: 'Split', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByTestId('gift-card-action')).toBeVisible();
+  });
+
   test('prefills a new transaction with URL search params', async () => {
     const transactionEntryPage = await navigation.goToTransactionEntryPage();
     await page.goto(

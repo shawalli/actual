@@ -29,6 +29,24 @@ export function getGiftCardCategoryId(
   );
 }
 
+export function getGiftCardActionVisibility({
+  amount,
+  childTransactionCount,
+  hasGiftCardSplit,
+}: {
+  amount: number;
+  childTransactionCount: number;
+  hasGiftCardSplit: boolean;
+}) {
+  const showGiftCardAction = !hasGiftCardSplit;
+
+  return {
+    showGiftCardAction,
+    showSplitAction:
+      showGiftCardAction && childTransactionCount === 0 && amount !== 0,
+  };
+}
+
 export function shouldShowGiftCardActions({
   isAdding,
   transactions,

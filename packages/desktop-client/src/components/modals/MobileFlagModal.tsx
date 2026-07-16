@@ -162,8 +162,10 @@ export function MobileFlagModal({
                 <Button
                   variant="primary"
                   style={{ flex: 1, height: styles.mobileMinHeight }}
-                  onPress={() => {
-                    onSave(nativeFlag ? nativeToShortcode(nativeFlag) : null);
+                  onPress={async () => {
+                    await onSave(
+                      nativeFlag ? nativeToShortcode(nativeFlag) : null,
+                    );
                     closeModal();
                   }}
                 >
@@ -171,8 +173,8 @@ export function MobileFlagModal({
                 </Button>
                 <Button
                   style={{ flex: 1, height: styles.mobileMinHeight }}
-                  onPress={() => {
-                    onSave(null);
+                  onPress={async () => {
+                    await onSave(null);
                     closeModal();
                   }}
                 >

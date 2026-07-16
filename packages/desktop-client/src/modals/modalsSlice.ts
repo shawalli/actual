@@ -326,7 +326,7 @@ export type Modal =
         value: TransactionEntity['flag'];
         description?: string;
         recentFlags?: string[];
-        onSave: (flag: TransactionEntity['flag']) => void;
+        onSave: (flag: TransactionEntity['flag']) => void | Promise<void>;
         onClose?: () => void;
       };
     }

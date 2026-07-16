@@ -20,7 +20,15 @@ rules:
       regex_filter: '(?:✕|FAIL|Error:|expected|received).*$'
       max_lines: 40
 
-  # 3. Global Code Linting (Oxlint + Oxfmt)
+  # 3. E2E Tests (Playwright)
+  - match: '^(?:yarn e2e|yarn workspace @actual-app/web run e2e|yarn workspace @actual-app/web run playwright test|npx playwright test|playwright test)'
+    on_success:
+      return_value: '{"status": "success", "message": "Playwright E2E tests passed cleanly."}'
+    on_failure:
+      regex_filter: '(?:^\s*\d+\)|^\s*[✘x] |^\s*\[[^]]+\] ›|Error:|TimeoutError:|expect\(|Expected:|Received:|Locator:|Call log:|attachment #|Error Context:|test-results/|packages/desktop-client/e2e/|\.test\.ts|failed|flaky|timed out).*$'
+      max_lines: 80
+
+  # 4. Global Code Linting (Oxlint + Oxfmt)
   - match: '^yarn lint'
     on_success:
       return_value: '{"status": "success", "message": "Oxlint checking passed with zero syntax or stylistic errors."}'
@@ -29,7 +37,7 @@ rules:
       regex_filter: '(?:─|│|error|warning|packages/).*$'
       max_lines: 30
 
-  # 4. Global Typecheck (tsgo + lage typecheck)
+  # 5. Global Typecheck (tsgo + lage typecheck)
   - match: '^yarn typecheck'
     on_success:
       return_value: '{"status": "success", "message": "TypeScript validation complete. No type errors found across workspaces."}'
@@ -38,7 +46,7 @@ rules:
       regex_filter: "(?:error TS\\d+|packages/|\\.ts).*$"
       max_lines: 35
 
-  # 5. Production Build Process
+  # 6. Production Build Process
   - match: '^yarn build'
     on_success:
       return_value: '{"status": "success", "message": "Monorepo build successful. All artifacts compiled into lib-dist and dist targets."}'

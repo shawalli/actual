@@ -187,7 +187,7 @@ describe('useTransactionBatchActions - flag bulk edit', () => {
     expectModal(modal, 'mobile-flag');
 
     await act(async () => {
-      modal.options.onSave(':large_blue_circle:');
+      await modal.options.onSave(':large_blue_circle:');
     });
 
     expect(mockSend).toHaveBeenCalledWith(

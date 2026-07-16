@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
 import { CloseAccountModal } from './close-account-modal';
@@ -11,6 +12,29 @@ type TransactionEntry = {
   category?: string;
   flag?: string;
 };
+
+const nativeFlagByShortcode = new Map([
+  [':large_blue_circle:', '🔵'],
+  [':orange_circle:', '🟠'],
+  [':green_circle:', '🟢'],
+]);
+
+async function selectFlagFromPopover(
+  popover: Locator,
+  shortcode: string,
+): Promise<void> {
+  const nativeFlag = nativeFlagByShortcode.get(shortcode);
+  if (!nativeFlag) {
+    throw new Error(`Unsupported flag shortcode in E2E helper: ${shortcode}`);
+  }
+
+  await popover
+    .getByRole('button')
+    .filter({ hasText: nativeFlag })
+    .first()
+    .click();
+  await popover.waitFor({ state: 'hidden', timeout: 2000 });
+}
 
 export class AccountPage {
   readonly page: Page;
@@ -202,8 +226,8 @@ export class AccountPage {
     const flagInput = flagCell.getByRole('textbox');
     await this.selectInputText(flagInput);
     await flagInput.pressSequentially(shortcode);
+    await selectFlagFromPopover(popover, shortcode);
     await flagInput.press('Enter');
-    await popover.waitFor({ state: 'hidden', timeout: 2000 });
   }
 
   /**
@@ -248,11 +272,11 @@ export class AccountPage {
     if (op !== 'is') {
       const opLabels: Record<string, string> = {
         isNot: 'is not',
-        isSet: 'is set',
-        isNotSet: 'is not set',
+        isSet: 'set',
+        isNotSet: 'not set',
       };
       await filterTooltip.locator
-        .getByRole('button', { name: opLabels[op], exact: true })
+        .getByText(opLabels[op], { exact: true })
         .click();
     }
 
@@ -344,8 +368,7 @@ export class AccountPage {
       const flagInput = flagCell.getByRole('textbox');
       await this.selectInputText(flagInput);
       await flagInput.pressSequentially(transaction.flag);
-      await flagInput.press('Enter');
-      await popover.waitFor({ state: 'hidden', timeout: 2000 });
+      await selectFlagFromPopover(popover, transaction.flag);
       const inputValue = await flagInput.inputValue();
       expect(inputValue).not.toBe('');
       expect(inputValue).not.toContain(':');

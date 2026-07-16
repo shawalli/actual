@@ -225,13 +225,15 @@ test.describe('Transactions', () => {
         await accountPage.filterByFlag('isNotSet');
 
         await expect(
-          accountPage.transactionTableRow.filter({ hasText: 'Flagged Payee' }),
+          accountPage.transactionTableRow.filter({
+            has: page.getByTestId('payee').getByText(/^Flagged Payee$/),
+          }),
         ).toHaveCount(0);
         await expect(
           accountPage.transactionTableRow.filter({
-            hasText: 'Unflagged Payee',
+            has: page.getByTestId('payee').getByText(/^Unflagged Payee$/),
           }),
-        ).not.toHaveCount(0);
+        ).toHaveCount(1);
       });
 
       test('filters by flag is :large_blue_circle:', async () => {

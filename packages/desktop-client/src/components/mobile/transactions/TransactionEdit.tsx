@@ -42,8 +42,10 @@ import * as monthUtils from '@actual-app/core/shared/months';
 import { q } from '@actual-app/core/shared/query';
 import { getUpcomingDays } from '@actual-app/core/shared/schedules';
 import {
+  addGiftCardSplitTransaction,
   addSplitTransaction,
   deleteTransaction,
+  hasGiftCardChild,
   makeEmptySplitSubtransactions,
   realizeTempTransactions,
   splitTransaction,
@@ -75,6 +77,8 @@ import {
   parseISO,
 } from 'date-fns';
 
+import { makeAmountFullStyle } from '#components/budget/util';
+import { GiftCardIcon } from '#components/GiftCardIcon';
 import { MobileBackButton } from '#components/mobile/MobileBackButton';
 import {
   FieldLabel,
@@ -120,6 +124,11 @@ import { setLastTransaction } from '#transactions/transactionsSlice';
 import { getStatusLabel } from '#util/schedule';
 
 import { AmountInput } from './AmountInput';
+import {
+  getGiftCardActionVisibility,
+  getGiftCardCategoryId,
+  shouldShowGiftCardActions,
+} from './giftCard';
 import { SplitAmountInput } from './SplitAmountInput';
 
 function getFieldName(transactionId: TransactionEntity['id'], field: string) {
@@ -317,6 +326,10 @@ function Footer({
 }: FooterProps) {
   const [transaction, ...childTransactions] = transactions;
   const emptySplitTransaction = childTransactions.find(t => t.amount === 0);
+  const shouldShowGiftCardFooterActions = shouldShowGiftCardActions({
+    isAdding,
+    transactions,
+  });
   const onClickRemainingSplit = () => {
     if (childTransactions.length === 0) {
       onSplit(transaction.id);
@@ -399,6 +412,41 @@ function Footer({
             <Trans>Select account</Trans>
           </Text>
         </Button>
+      ) : shouldShowGiftCardFooterActions ? (
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Button
+            variant="primary"
+            style={{ flex: 1, height: styles.mobileMinHeight }}
+            isDisabled={!!editingField}
+            onPress={() => onAddSplit(transaction.id)}
+          >
+            <SvgSplit width={17} height={17} />
+            <Text
+              style={{
+                ...styles.text,
+                marginLeft: 6,
+              }}
+            >
+              <Trans>Add new split</Trans>
+            </Text>
+          </Button>
+          <Button
+            variant="primary"
+            style={{ flex: 1, height: styles.mobileMinHeight }}
+            isDisabled={!!editingField}
+            onPress={onAdd}
+          >
+            <SvgAdd width={17} height={17} />
+            <Text
+              style={{
+                ...styles.text,
+                marginLeft: 5,
+              }}
+            >
+              <Trans>Add transaction</Trans>
+            </Text>
+          </Button>
+        </View>
       ) : isAdding ? (
         <Button
           variant="primary"
@@ -441,6 +489,8 @@ function Footer({
 type ChildTransactionEditProps = {
   keyboardHeader: ReactNode;
   transaction: TransactionEntity;
+  isGiftCard: boolean;
+  isExpanded: boolean;
   negate: boolean;
   amountFocused: boolean;
   getCategory: (transaction: TransactionEntity, isOffBudget: boolean) => string;
@@ -460,7 +510,69 @@ type ChildTransactionEditProps = {
     value: TransactionEntity[Field],
   ) => void;
   onDelete: (id: TransactionEntity['id']) => void;
+  onToggleExpanded: () => void;
 };
+
+type GiftCardTransactionSummaryProps = {
+  transaction: TransactionEntity;
+  onExpand: () => void;
+};
+
+function GiftCardTransactionSummary({
+  transaction,
+  onExpand,
+}: GiftCardTransactionSummaryProps) {
+  return (
+    <View
+      style={{
+        backgroundColor: theme.tableBackground,
+        borderColor: theme.tableBorder,
+        borderWidth: '1px',
+        borderRadius: '5px',
+        margin: '10px',
+      }}
+    >
+      <Button
+        variant="bare"
+        style={{
+          width: '100%',
+          height: 48,
+          borderWidth: 0,
+          padding: '0 10px',
+          backgroundColor: 'transparent',
+        }}
+        onPress={onExpand}
+        data-testid="gift-card-summary"
+      >
+        <GiftCardIcon
+          width={17}
+          height={17}
+          style={{ color: theme.formLabelText }}
+        />
+        <Text style={{ ...styles.text, marginLeft: 7, flex: 1 }}>
+          <Trans>Gift Card</Trans>
+        </Text>
+        <Text
+          style={{
+            ...styles.tnum,
+            ...makeAmountFullStyle(transaction.amount, {
+              positiveColor: theme.numberPositive,
+              negativeColor: theme.numberNegative,
+              zeroColor: theme.numberNeutral,
+            }),
+          }}
+        >
+          {integerToCurrency(amountToInteger(transaction.amount))}
+        </Text>
+        <SvgCheveronDown
+          width={14}
+          height={14}
+          style={{ color: theme.pageTextSubdued, marginLeft: 10 }}
+        />
+      </Button>
+    </View>
+  );
+}
 
 const ChildTransactionEdit = forwardRef<
   HTMLDivElement,
@@ -469,6 +581,8 @@ const ChildTransactionEdit = forwardRef<
   (
     {
       transaction,
+      isGiftCard,
+      isExpanded,
       negate,
       amountFocused,
       getCategory,
@@ -479,6 +593,7 @@ const ChildTransactionEdit = forwardRef<
       onEditField,
       onUpdate,
       onDelete,
+      onToggleExpanded,
       keyboardHeader,
     },
     ref,
@@ -494,6 +609,16 @@ const ChildTransactionEdit = forwardRef<
       payee: getPayee(transaction),
       transferAccount: getTransferAccount(transaction),
     });
+
+    if (isGiftCard && !isExpanded) {
+      return (
+        <GiftCardTransactionSummary
+          transaction={transaction}
+          onExpand={onToggleExpanded}
+        />
+      );
+    }
+
     return (
       <View
         innerRef={ref}
@@ -509,6 +634,35 @@ const ChildTransactionEdit = forwardRef<
           margin: '10px',
         }}
       >
+        {isGiftCard && (
+          <Button
+            variant="bare"
+            style={{
+              height: 32,
+              borderWidth: 0,
+              padding: 0,
+              backgroundColor: 'transparent',
+            }}
+            onPress={onToggleExpanded}
+          >
+            <GiftCardIcon
+              width={16}
+              height={16}
+              style={{ color: theme.formLabelText }}
+            />
+            <Text style={{ ...styles.text, marginLeft: 6, flex: 1 }}>
+              <Trans>Gift Card</Trans>
+            </Text>
+            <SvgCheveronDown
+              width={14}
+              height={14}
+              style={{
+                color: theme.pageTextSubdued,
+                transform: 'rotate(180deg)',
+              }}
+            />
+          </Button>
+        )}
         <View style={{ flexDirection: 'row' }}>
           <View style={{ flex: 1, minWidth: 0 }}>
             <FieldLabel title={t('Payee')} />
@@ -535,8 +689,9 @@ const ChildTransactionEdit = forwardRef<
             <SplitAmountInput
               keyboardHeader={keyboardHeader}
               disabled={
-                !!editingField &&
-                editingField !== getFieldName(transaction.id, 'amount')
+                isGiftCard ||
+                (!!editingField &&
+                  editingField !== getFieldName(transaction.id, 'amount'))
               }
               value={transaction.amount}
               negate={negate}
@@ -662,6 +817,10 @@ type TransactionEditInnerProps = {
   onDelete: (id: TransactionEntity['id']) => void;
   onSplit: (id: TransactionEntity['id']) => void;
   onAddSplit: (id: TransactionEntity['id']) => void;
+  onAddGiftCardSplit: (
+    id: TransactionEntity['id'],
+    giftCardCategory?: TransactionEntity['category'],
+  ) => void;
   shouldShowSaveLocation?: boolean;
   onSaveLocation?: () => void;
   onSelectNearestPayee?: () => void;
@@ -682,6 +841,7 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
     onDelete,
     onSplit,
     onAddSplit,
+    onAddGiftCardSplit,
     shouldShowSaveLocation,
     onSaveLocation,
     onSelectNearestPayee,
@@ -734,12 +894,26 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
     }, []);
 
     const [transaction, ...childTransactions] = transactions;
+    const hasGiftCardSplit = hasGiftCardChild({
+      ...transaction,
+      subtransactions: childTransactions,
+    });
+    const { showGiftCardAction, showSplitAction } = getGiftCardActionVisibility(
+      {
+        amount: transaction.amount,
+        childTransactionCount: childTransactions.length,
+        hasGiftCardSplit,
+      },
+    );
 
     const { editingField, onRequestActiveEdit, onClearActiveEdit } =
       useSingleActiveEditForm()!;
     const childTransactionElementRefMap = useRef<
       Record<TransactionEntity['id'], HTMLDivElement | null>
     >({});
+    const [expandedGiftCardId, setExpandedGiftCardId] = useState<
+      TransactionEntity['id'] | null
+    >(null);
     const hasAccountChanged = useRef(false);
 
     const payeesById = useMemo(() => groupById(payees), [payees]);
@@ -1421,8 +1595,13 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
             <ChildTransactionEdit
               key={childTrans.id}
               transaction={childTrans}
+              isGiftCard={!!childTrans.isGiftCard}
+              isExpanded={expandedGiftCardId === childTrans.id}
               negate={transaction.amount <= 0}
-              amountFocused={arr.findIndex(c => c.amount === 0) === i}
+              amountFocused={
+                !childTrans.isGiftCard &&
+                arr.findIndex(c => c.amount === 0) === i
+              }
               ref={r => {
                 childTransactionElementRefMap.current = {
                   ...childTransactionElementRefMap.current,
@@ -1437,6 +1616,11 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
               onUpdate={onUpdateInner}
               onEditField={onEditFieldInner}
               onDelete={onDeleteInner}
+              onToggleExpanded={() => {
+                setExpandedGiftCardId(currentId =>
+                  currentId === childTrans.id ? null : childTrans.id,
+                );
+              }}
               keyboardHeader={
                 <FillRemainingButton
                   remaining={remaining}
@@ -1452,22 +1636,63 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
             />
           ))}
 
-          {transaction.amount !== 0 && childTransactions.length === 0 && (
-            <View style={{ alignItems: 'center' }}>
+          {showGiftCardAction && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 48,
+              }}
+            >
+              {showSplitAction && (
+                <Button
+                  variant="bare"
+                  isDisabled={!!editingField}
+                  style={{
+                    height: 40,
+                    borderWidth: 0,
+                    marginLeft: styles.mobileEditingPadding,
+                    marginRight: styles.mobileEditingPadding,
+                    marginTop: 10,
+                    backgroundColor: 'transparent',
+                  }}
+                  onPress={() => onSplit(transaction.id)}
+                >
+                  <SvgSplit
+                    width={17}
+                    height={17}
+                    style={{ color: theme.formLabelText }}
+                  />
+                  <Text
+                    style={{
+                      marginLeft: 5,
+                      userSelect: 'none',
+                      color: theme.formLabelText,
+                    }}
+                  >
+                    <Trans>Split</Trans>
+                  </Text>
+                </Button>
+              )}
               <Button
                 variant="bare"
                 isDisabled={!!editingField}
                 style={{
                   height: 40,
                   borderWidth: 0,
-                  marginLeft: styles.mobileEditingPadding,
-                  marginRight: styles.mobileEditingPadding,
                   marginTop: 10,
                   backgroundColor: 'transparent',
                 }}
-                onPress={() => onSplit(transaction.id)}
+                data-testid="gift-card-action"
+                onPress={() =>
+                  onAddGiftCardSplit(
+                    transaction.id,
+                    getGiftCardCategoryId(categoryGroups),
+                  )
+                }
               >
-                <SvgSplit
+                <GiftCardIcon
                   width={17}
                   height={17}
                   style={{ color: theme.formLabelText }}
@@ -1479,7 +1704,7 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
                     color: theme.formLabelText,
                   }}
                 >
-                  <Trans>Split</Trans>
+                  <Trans>Gift Card</Trans>
                 </Text>
               </Button>
             </View>
@@ -2068,6 +2293,21 @@ function TransactionEditUnconnected({
     [transactions],
   );
 
+  const onAddGiftCardSplit = useCallback(
+    (
+      id: TransactionEntity['id'],
+      giftCardCategory?: TransactionEntity['category'],
+    ) => {
+      const changes = addGiftCardSplitTransaction(
+        transactions,
+        id,
+        giftCardCategory,
+      );
+      setTransactions(changes.data);
+    },
+    [transactions],
+  );
+
   const onSplit = useCallback(
     (id: TransactionEntity['id']) => {
       const changes = splitTransaction(
@@ -2239,6 +2479,7 @@ function TransactionEditUnconnected({
         onDelete={onDelete}
         onSplit={onSplit}
         onAddSplit={onAddSplit}
+        onAddGiftCardSplit={onAddGiftCardSplit}
         shouldShowSaveLocation={shouldShowSaveLocation}
         onSaveLocation={onSaveLocation}
         onSelectNearestPayee={onSelectNearestPayee}

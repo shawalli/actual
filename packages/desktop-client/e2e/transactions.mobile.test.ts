@@ -55,6 +55,22 @@ test.describe('Mobile Transactions', () => {
     await expect(page).toMatchThemeScreenshots();
   });
 
+  test('shows Gift Card before Split for a zero-amount transaction', async () => {
+    const transactionEntryPage = await navigation.goToTransactionEntryPage();
+
+    await expect(page.getByTestId('gift-card-action')).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Split', exact: true }),
+    ).toHaveCount(0);
+
+    await transactionEntryPage.fillAmount('2.00');
+
+    await expect(
+      page.getByRole('button', { name: 'Split', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByTestId('gift-card-action')).toBeVisible();
+  });
+
   test('prefills a new transaction with URL search params', async () => {
     const transactionEntryPage = await navigation.goToTransactionEntryPage();
     await page.goto(
@@ -79,6 +95,9 @@ test.describe('Mobile Transactions', () => {
 - button "Split" [disabled]:
   - img
   - text: Split
+- button "Gift Card" [disabled]:
+  - img
+  - text: Gift Card
 - text: Account
 - button "HSBC" [disabled]:
   - img
@@ -116,6 +135,46 @@ test.describe('Mobile Transactions', () => {
     await expect(accountPage.transactions.nth(0)).toHaveText(
       'KrogerClothing-12.34',
     );
+  });
+
+  test('creates and expands a gift-card split transaction', async () => {
+    const transactionEntryPage = await navigation.goToTransactionEntryPage();
+
+    await transactionEntryPage.fillAmount('12.34');
+    await transactionEntryPage.header.click();
+    await transactionEntryPage.fillField(
+      page.getByTestId('payee-field'),
+      'Kroger',
+    );
+    await transactionEntryPage.fillField(
+      page.getByTestId('category-field'),
+      'Clothing',
+    );
+    await transactionEntryPage.fillField(
+      page.getByTestId('account-field'),
+      'Ally Savings',
+    );
+
+    await page.getByTestId('gift-card-action').click();
+
+    const giftCardSummary = page.getByTestId('gift-card-summary');
+    await expect(giftCardSummary).toContainText('Gift Card');
+    await expect(
+      transactionEntryPage.footer.getByRole('button', {
+        name: 'Add new split',
+      }),
+    ).toBeVisible();
+    await expect(transactionEntryPage.addTransactionButton).toBeVisible();
+
+    await giftCardSummary.click();
+    await expect(
+      page.getByTestId(/^category-field-/).filter({ hasText: 'Income' }),
+    ).toBeVisible();
+
+    await transactionEntryPage.footer
+      .getByRole('button', { name: 'Add new split' })
+      .click();
+    await expect(page.getByText('Delete split')).toHaveCount(3);
   });
 
   test('creates a flagged transaction from `/accounts/:id` page', async () => {

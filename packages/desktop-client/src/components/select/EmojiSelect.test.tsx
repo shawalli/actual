@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import type { FocusEvent, ReactNode } from 'react';
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 
@@ -35,6 +35,30 @@ vi.mock('@emoji-mart/data', () => ({
         name: 'Thumbs Up',
         keywords: ['thumbs', 'up', 'like', 'yes'],
         skins: [{ native: '👍' }],
+      },
+      red_circle: {
+        id: 'red_circle',
+        name: 'Red Circle',
+        keywords: ['red', 'circle'],
+        skins: [{ native: '🔴' }],
+      },
+      green_circle: {
+        id: 'green_circle',
+        name: 'Green Circle',
+        keywords: ['green', 'circle'],
+        skins: [{ native: '🟢' }],
+      },
+      yellow_circle: {
+        id: 'yellow_circle',
+        name: 'Yellow Circle',
+        keywords: ['yellow', 'circle'],
+        skins: [{ native: '🟡' }],
+      },
+      purple_circle: {
+        id: 'purple_circle',
+        name: 'Purple Circle',
+        keywords: ['purple', 'circle'],
+        skins: [{ native: '🟣' }],
       },
     },
   },
@@ -463,5 +487,201 @@ describe('EmojiSelect', () => {
 
     const input = screen.getByRole('textbox');
     expect(input).toHaveValue('💯');
+  });
+
+  it('renders up to 7 recent flags in desktop mode', async () => {
+    const { container } = render(
+      <EmojiSelect
+        {...defaultProps}
+        isOpen
+        recentFlags={[
+          ':grinning:',
+          ':100:',
+          ':large_blue_circle:',
+          ':thumbs_up:',
+          ':red_circle:',
+          ':green_circle:',
+          ':yellow_circle:',
+          ':purple_circle:',
+        ]}
+        recentFlagsLimit={7}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('emoji-select-recent-flags'),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      container.querySelectorAll('button[data-recent-emoji-index]'),
+    ).toHaveLength(7);
+    expect(
+      within(screen.getByTestId('emoji-select-recent-flags')).queryByLabelText(
+        'Purple Circle emoji (purple_circle)',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders up to 6 recent flags in embedded mode', async () => {
+    const { container } = render(
+      <EmojiSelect
+        {...defaultProps}
+        embedded
+        recentFlags={[
+          ':grinning:',
+          ':100:',
+          ':large_blue_circle:',
+          ':thumbs_up:',
+          ':red_circle:',
+          ':green_circle:',
+          ':yellow_circle:',
+        ]}
+        recentFlagsLimit={6}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('emoji-select-recent-flags'),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      container.querySelectorAll('button[data-recent-emoji-index]'),
+    ).toHaveLength(6);
+    expect(
+      within(screen.getByTestId('emoji-select-recent-flags')).queryByLabelText(
+        'Yellow Circle emoji (yellow_circle)',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides recent flags while searching', async () => {
+    render(
+      <EmojiSelect
+        {...defaultProps}
+        isOpen
+        recentFlags={[':large_blue_circle:']}
+        recentFlagsLimit={7}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('emoji-select-recent-flags'),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByRole('textbox');
+    await userEvent.click(input);
+    await userEvent.keyboard('large_blue_circle');
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('emoji-select-recent-flags'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('selects a recent flag by shortcode', async () => {
+    const onSelect = vi.fn();
+
+    render(
+      <EmojiSelect
+        {...defaultProps}
+        isOpen
+        recentFlags={[':large_blue_circle:']}
+        recentFlagsLimit={7}
+        onSelect={onSelect}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('emoji-select-recent-flags'),
+      ).toBeInTheDocument();
+    });
+
+    await userEvent.click(
+      within(screen.getByTestId('emoji-select-recent-flags')).getByText('🔵'),
+    );
+
+    expect(onSelect).toHaveBeenCalledWith(':large_blue_circle:');
+  });
+
+  it('does not duplicate recent flags in the unsearched main grid', async () => {
+    render(
+      <EmojiSelect
+        {...defaultProps}
+        isOpen
+        recentFlags={[':large_blue_circle:']}
+        recentFlagsLimit={7}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('emoji-select-recent-flags'),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText('🔵')).toHaveLength(1);
+  });
+
+  it('includes recent flags in searched results', async () => {
+    render(
+      <EmojiSelect
+        {...defaultProps}
+        isOpen
+        recentFlags={[':large_blue_circle:']}
+        recentFlagsLimit={7}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('emoji-select-recent-flags'),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByRole('textbox');
+    await userEvent.click(input);
+    await userEvent.keyboard('large_blue_circle');
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('emoji-select-recent-flags')).toBeNull();
+      expect(screen.getByText('🔵')).toBeInTheDocument();
+    });
+  });
+
+  it('renders section headers for recent and regular flags', async () => {
+    render(
+      <EmojiSelect
+        {...defaultProps}
+        isOpen
+        recentFlags={[':large_blue_circle:']}
+        recentFlagsLimit={7}
+      />,
+      { wrapper: TestProviders },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('RECENTLY USED')).toBeInTheDocument();
+      expect(screen.getByText('FLAGS')).toBeInTheDocument();
+    });
+
+    expect(
+      screen
+        .getByText('RECENTLY USED')
+        .compareDocumentPosition(screen.getByText('FLAGS')),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });

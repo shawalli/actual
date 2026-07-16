@@ -18,7 +18,12 @@ type UseTransactionsSearchResult = {
 };
 
 function isFlagSearchCandidate(value: string) {
-  return /[^\x00-\x7F]/u.test(value) || /^:[a-zA-Z0-9_+-]+:$/.test(value);
+  return (
+    Array.from(value).some(char => {
+      const codePoint = char.codePointAt(0);
+      return codePoint != null && codePoint > 0x7f;
+    }) || /^:[a-zA-Z0-9_+-]+:$/.test(value)
+  );
 }
 
 export function getMobileFlagSearchTerms(searchText: string) {

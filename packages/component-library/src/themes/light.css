@@ -78,6 +78,7 @@
   --color-menuAutoCompleteText: var(--palette-white);
   --color-menuAutoCompleteTextHover: var(--palette-green150);
   --color-menuAutoCompleteTextHeader: var(--palette-orange150);
+  --color-menuAutoCompleteTextSubHeader: var(--palette-gray100);
   --color-menuAutoCompleteItemTextHover: var(--color-menuAutoCompleteText);
   --color-menuAutoCompleteItemText: var(--color-menuAutoCompleteText);
 

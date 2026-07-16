@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
@@ -8,8 +10,21 @@ import { EmojiAutocompleteModal } from './EmojiAutocompleteModal';
 
 // Mock EmojiSelect so the test focuses on the modal shell, not the picker
 vi.mock('#components/select/EmojiSelect', () => ({
-  EmojiSelect: ({ onSelect }: { onSelect: (emoji: string | null) => void }) => (
-    <button data-testid="mock-emoji-select" onClick={() => onSelect('🔵')}>
+  EmojiSelect: ({
+    onSelect,
+    recentFlags,
+    recentFlagsLimit,
+  }: {
+    onSelect: (emoji: string | null) => void;
+    recentFlags?: string[];
+    recentFlagsLimit?: number;
+  }) => (
+    <button
+      data-testid="mock-emoji-select"
+      data-recent-flags={JSON.stringify(recentFlags ?? [])}
+      data-recent-flags-limit={recentFlagsLimit ?? ''}
+      onClick={() => onSelect('🔵')}
+    >
       Select Emoji
     </button>
   ),
@@ -23,10 +38,16 @@ describe('EmojiAutocompleteModal', () => {
     vi.clearAllMocks();
   });
 
-  function renderModal() {
+  function renderModal(
+    props: Partial<ComponentProps<typeof EmojiAutocompleteModal>> = {},
+  ) {
     return render(
       <TestProviders>
-        <EmojiAutocompleteModal onSelect={onSelect} onClose={onClose} />
+        <EmojiAutocompleteModal
+          onSelect={onSelect}
+          onClose={onClose}
+          {...props}
+        />
       </TestProviders>,
     );
   }
@@ -41,5 +62,16 @@ describe('EmojiAutocompleteModal', () => {
     await userEvent.click(screen.getByTestId('mock-emoji-select'));
     expect(onSelect).toHaveBeenCalledOnce();
     expect(onSelect).toHaveBeenCalledWith('🔵');
+  });
+
+  it('passes recent flags to emoji selector', () => {
+    renderModal({
+      recentFlags: [':100:'],
+      recentFlagsLimit: 7,
+    });
+
+    const emojiSelect = screen.getByTestId('mock-emoji-select');
+    expect(emojiSelect).toHaveAttribute('data-recent-flags', '[":100:"]');
+    expect(emojiSelect).toHaveAttribute('data-recent-flags-limit', '7');
   });
 });

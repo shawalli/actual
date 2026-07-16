@@ -6,6 +6,7 @@ import type { Query } from '@actual-app/core/shared/query';
 import { isPreviewId } from '@actual-app/core/shared/transactions';
 import type { TransactionEntity } from '@actual-app/core/types/models';
 
+import { getTransactionsWithSplitChildren } from '#components/mobile/transactions/getTransactionsWithSplitChildren';
 import { TransactionListWithBalances } from '#components/mobile/transactions/TransactionListWithBalances';
 import { SchedulesProvider } from '#hooks/useCachedSchedules';
 import { useDateFormat } from '#hooks/useDateFormat';
@@ -18,8 +19,6 @@ import { collapseModals, pushModal } from '#modals/modalsSlice';
 import * as queries from '#queries';
 import { useDispatch } from '#redux';
 import * as bindings from '#spreadsheet/bindings';
-
-import { getTransactionsWithSplitChildren } from '../transactions/getTransactionsWithSplitChildren';
 
 export function AllAccountTransactions() {
   const schedulesQuery = useMemo(() => getSchedulesQuery(), []);

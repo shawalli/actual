@@ -21,6 +21,8 @@ type EmojiAutocompleteModalProps = Extract<
 
 export function EmojiAutocompleteModal({
   onSelect,
+  recentFlags,
+  recentFlagsLimit,
   onClose,
 }: EmojiAutocompleteModalProps) {
   const { t } = useTranslation();
@@ -82,6 +84,8 @@ export function EmojiAutocompleteModal({
                   focused
                   openOnFocus={false}
                   clearOnBlur={false}
+                  recentFlags={recentFlags}
+                  recentFlagsLimit={recentFlagsLimit}
                   onSelect={emoji => {
                     onSelect(emoji);
                     closeModal();

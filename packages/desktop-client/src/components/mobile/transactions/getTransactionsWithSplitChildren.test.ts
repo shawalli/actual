@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import type { TransactionEntity } from '@actual-app/core/types/models';
+import { describe, expect, it } from 'vitest';
 
 import { getTransactionsWithSplitChildren } from './getTransactionsWithSplitChildren';
 

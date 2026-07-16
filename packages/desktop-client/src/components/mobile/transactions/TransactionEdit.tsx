@@ -67,6 +67,7 @@ import type {
   TransactionEntity,
 } from '@actual-app/core/types/models';
 import { css } from '@emotion/css';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   format as formatDate,
   isValid as isValidDate,
@@ -109,6 +110,12 @@ import { useSavePayeeLocationMutation } from '#payees';
 import { locationService } from '#payees/location';
 import { aqlQuery } from '#queries/aqlQuery';
 import { useDispatch, useSelector } from '#redux';
+import { transactionQueries } from '#transactions';
+import {
+  MOBILE_RECENT_FLAGS_LIMIT,
+  seedRecentFlagsFromTransactions,
+  useRecentTransactionFlags,
+} from '#transactions/recentFlags';
 import { setLastTransaction } from '#transactions/transactionsSlice';
 import { getStatusLabel } from '#util/schedule';
 
@@ -646,7 +653,7 @@ type TransactionEditInnerProps = {
   payees: PayeeEntity[];
   dateFormat: string;
   transactions: TransactionEntity[];
-  onSave: (transactions: TransactionEntity[]) => void;
+  onSave: (transactions: TransactionEntity[]) => Promise<void>;
   onUpdate: <Field extends keyof TransactionEntity>(
     transaction: TransactionEntity,
     field: Field,
@@ -685,6 +692,12 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const [showHiddenCategories] = useLocalPref('budget.showHiddenCategories');
+    const {
+      recentFlags,
+      hasStoredRecentFlags,
+      saveRecentFlags,
+      recordRecentFlag,
+    } = useRecentTransactionFlags(MOBILE_RECENT_FLAGS_LIMIT);
     const [upcomingLength = '7'] = useSyncedPref(
       'upcomingScheduledTransactionLength',
     );
@@ -695,6 +708,20 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
         ) || [],
       [unserializedTransactions, dateFormat],
     );
+
+    useEffect(() => {
+      if (hasStoredRecentFlags) {
+        return;
+      }
+
+      saveRecentFlags(
+        seedRecentFlagsFromTransactions(
+          unserializedTransactions,
+          MOBILE_RECENT_FLAGS_LIMIT,
+        ),
+      );
+    }, [hasStoredRecentFlags, saveRecentFlags, unserializedTransactions]);
+
     const { data: { grouped: categoryGroups } = { grouped: [] } } =
       useCategories();
     const noteRef = useRef<HTMLInputElement | null>(null);
@@ -1014,8 +1041,10 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
                     name: 'mobile-flag',
                     options: {
                       value: transactionToEdit.flag,
-                      onSave: flag => {
-                        void onUpdateInner(transactionToEdit, name, flag);
+                      recentFlags,
+                      onSave: async flag => {
+                        await onUpdateInner(transactionToEdit, name, flag);
+                        recordRecentFlag(flag);
                       },
                       onClose: () => {
                         onClearActiveEdit();
@@ -1065,6 +1094,8 @@ const TransactionEditInner = memo<TransactionEditInnerProps>(
         onUpdateInner,
         onClearActiveEdit,
         onRequestActiveEdit,
+        recentFlags,
+        recordRecentFlag,
         transaction.id,
         transactions,
         unserializedTransactions,
@@ -1745,6 +1776,7 @@ function TransactionEditUnconnected({
   const { state: locationState } = useLocation();
   const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const updatePayeeLocationMutation = useSavePayeeLocationMutation();
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<TransactionEntity[]>([]);
@@ -1805,9 +1837,12 @@ function TransactionEditUnconnected({
       }
     }
     if (transactionId !== 'new') {
+      isAdding.current = false;
+      isDeleted.current = false;
       void fetchTransaction();
     } else {
       isAdding.current = true;
+      isDeleted.current = false;
     }
 
     return () => {
@@ -1977,6 +2012,10 @@ function TransactionEditUnconnected({
           deleted: changes.deleted,
           updated: changes.updated,
         });
+        await queryClient.invalidateQueries({
+          queryKey: transactionQueries.all(),
+          refetchType: 'all',
+        });
 
         // if (onTransactionsChange) {
         //   onTransactionsChange({
@@ -1992,7 +2031,7 @@ function TransactionEditUnconnected({
         dispatch(setLastTransaction({ transaction: newTransactions[0] }));
       }
     },
-    [dispatch, fetchedTransactions],
+    [dispatch, fetchedTransactions, queryClient],
   );
 
   const onDelete = useCallback(
@@ -2006,6 +2045,10 @@ function TransactionEditUnconnected({
         const _remoteUpdates = await send('transactions-batch-update', {
           deleted: changes.diff.deleted,
         });
+        await queryClient.invalidateQueries({
+          queryKey: transactionQueries.all(),
+          refetchType: 'all',
+        });
 
         // if (onTransactionsChange) {
         //   onTransactionsChange({ ...changes, updated: remoteUpdates });
@@ -2014,7 +2057,7 @@ function TransactionEditUnconnected({
 
       setTransactions(changes.data);
     },
-    [transactions],
+    [queryClient, transactions],
   );
 
   const onAddSplit = useCallback(

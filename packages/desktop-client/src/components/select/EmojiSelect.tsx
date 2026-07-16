@@ -52,6 +52,8 @@ type EmojiSelectProps = {
   openOnFocus?: boolean;
   shouldSaveFromKey?: (e: KeyboardEvent<HTMLInputElement>) => boolean;
   clearOnBlur?: boolean;
+  recentFlags?: string[];
+  recentFlagsLimit?: number;
   inputProps?: ComponentProps<typeof Input>;
   onSelect: (emoji: string | null) => void;
 };
@@ -64,6 +66,8 @@ export function EmojiSelect({
   openOnFocus = true,
   shouldSaveFromKey: shouldSaveFromKeyProp = defaultShouldSaveFromKey,
   clearOnBlur = true,
+  recentFlags = [],
+  recentFlagsLimit = 0,
   inputProps,
   onSelect,
 }: EmojiSelectProps) {
@@ -242,6 +246,44 @@ export function EmojiSelect({
     return emojis;
   }, []);
 
+  const emojiById = useMemo(() => {
+    return new Map(allEmojis.map(emoji => [emoji.id, emoji]));
+  }, [allEmojis]);
+
+  const recentEmojis = useMemo(() => {
+    if (recentFlagsLimit <= 0) {
+      return [];
+    }
+
+    const seenEmojiIds = new Set<string>();
+    const emojis: EmojiData[] = [];
+
+    for (const flag of recentFlags) {
+      const emojiId = flag.match(/^:([^:]+):$/)?.[1];
+      if (!emojiId || seenEmojiIds.has(emojiId)) {
+        continue;
+      }
+
+      const emoji = emojiById.get(emojiId);
+      if (!emoji) {
+        continue;
+      }
+
+      seenEmojiIds.add(emojiId);
+      emojis.push(emoji);
+
+      if (emojis.length >= recentFlagsLimit) {
+        break;
+      }
+    }
+
+    return emojis;
+  }, [emojiById, recentFlags, recentFlagsLimit]);
+
+  const recentEmojiIds = useMemo(() => {
+    return new Set(recentEmojis.map(emoji => emoji.id));
+  }, [recentEmojis]);
+
   const setSelectionRange = useCallback((start: number, end: number) => {
     const len = Array.from(searchQueryRef.current).length;
     const s = Math.max(0, Math.min(start, len));
@@ -318,7 +360,11 @@ export function EmojiSelect({
   // Filter emojis based on search query
   const filteredEmojis = useMemo(() => {
     if (!searchQuery.trim()) {
-      return allEmojis;
+      if (recentEmojiIds.size === 0) {
+        return allEmojis;
+      }
+
+      return allEmojis.filter(emoji => !recentEmojiIds.has(emoji.id));
     }
 
     const normalizedQuery = normalizeSearchQuery(searchQuery);
@@ -354,7 +400,7 @@ export function EmojiSelect({
 
       return false;
     });
-  }, [allEmojis, searchQuery, normalizeSearchQuery]);
+  }, [allEmojis, searchQuery, normalizeSearchQuery, recentEmojiIds]);
 
   useEffect(() => {
     setFocusedIndex(null);
@@ -535,6 +581,59 @@ export function EmojiSelect({
     onSelect(null);
     closePicker();
   }, [closePicker, onSelect]);
+
+  const renderEmojiButton = (
+    emoji: EmojiData,
+    index: number,
+    {
+      isRecent = false,
+    }: {
+      isRecent?: boolean;
+    } = {},
+  ) => (
+    <button
+      key={`${isRecent ? 'recent' : 'emoji'}-${emoji.id}-${index}`}
+      data-emoji-index={isRecent ? undefined : index}
+      data-recent-emoji-index={isRecent ? index : undefined}
+      type="button"
+      aria-label={`${emoji.name} emoji (${emoji.id})`}
+      onClick={() => handleEmojiSelect(emoji)}
+      onMouseEnter={() => setHoveredEmoji(emoji)}
+      onMouseLeave={() => setHoveredEmoji(null)}
+      style={{
+        width: `${emojiSize}px`,
+        height: `${emojiSize}px`,
+        fontSize: `${emojiSize}px`,
+        lineHeight: `${emojiSize}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor:
+          !isRecent && focusedIndex === index
+            ? theme.menuItemBackgroundHover
+            : 'transparent',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        padding: 0,
+        transition: 'background-color 0.1s',
+      }}
+      onFocus={() => {
+        if (!isRecent) {
+          setFocusedIndex(index);
+        }
+        setHoveredEmoji(emoji);
+      }}
+      onBlur={() => {
+        if (!isRecent && focusedIndex === index) {
+          setFocusedIndex(null);
+        }
+        setHoveredEmoji(null);
+      }}
+    >
+      {emoji.native}
+    </button>
+  );
 
   const handleNavigate = useCallback(
     (key: string) => {
@@ -915,6 +1014,51 @@ export function EmojiSelect({
 
   const displayValue = shortcodeToNativeUtil(value);
   const showPlaceholder = !value;
+  const showRecentEmojis = recentEmojis.length > 0 && !searchQuery.trim();
+  const sectionLabelStyle = {
+    padding: '4px 8px',
+    color: theme.menuAutoCompleteTextSubHeader,
+    userSelect: 'none',
+    ...styles.tinyText,
+  };
+  const recentEmojiSection = showRecentEmojis ? (
+    <>
+      <View style={sectionLabelStyle}>
+        <Trans>RECENTLY USED</Trans>
+      </View>
+      <View
+        data-testid="emoji-select-recent-flags"
+        style={{
+          padding: '0 4px 8px',
+          display: 'grid',
+          gridTemplateColumns: `repeat(${Math.min(
+            recentFlagsLimit,
+            emojisPerRow,
+          )}, ${emojiSize}px)`,
+          gap: `${emojiGap}px`,
+          justifyContent: 'center',
+          outline: 'none',
+        }}
+        onMouseLeave={() => {
+          setHoveredEmoji(null);
+        }}
+      >
+        {recentEmojis.map((emoji, index) =>
+          renderEmojiButton(emoji, index, { isRecent: true }),
+        )}
+      </View>
+    </>
+  ) : null;
+  const flagsSectionLabel = (
+    <View
+      style={{
+        ...sectionLabelStyle,
+        paddingTop: showRecentEmojis ? 15 : 4,
+      }}
+    >
+      <Trans>FLAGS</Trans>
+    </View>
+  );
 
   return (
     <View style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -1203,6 +1347,10 @@ export function EmojiSelect({
             </View>
           </View>
 
+          {recentEmojiSection}
+
+          {flagsSectionLabel}
+
           {/* Emoji grid */}
           <View
             ref={emojiGridRef}
@@ -1245,43 +1393,9 @@ export function EmojiSelect({
               setFocusedIndex(null);
             }}
           >
-            {filteredEmojis.map((emoji, index) => (
-              <button
-                key={`${emoji.id}-${index}`}
-                data-emoji-index={index}
-                type="button"
-                aria-label={`${emoji.name} emoji (${emoji.id})`}
-                onClick={() => handleEmojiSelect(emoji)}
-                onMouseEnter={() => setHoveredEmoji(emoji)}
-                onMouseLeave={() => setHoveredEmoji(null)}
-                style={{
-                  width: `${emojiSize}px`,
-                  height: `${emojiSize}px`,
-                  fontSize: `${emojiSize}px`,
-                  lineHeight: `${emojiSize}px`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor:
-                    focusedIndex === index
-                      ? theme.menuItemBackgroundHover
-                      : 'transparent',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  padding: 0,
-                  transition: 'background-color 0.1s',
-                }}
-                onFocus={() => setFocusedIndex(index)}
-                onBlur={() => {
-                  if (focusedIndex === index) {
-                    setFocusedIndex(null);
-                  }
-                }}
-              >
-                {emoji.native}
-              </button>
-            ))}
+            {filteredEmojis.map((emoji, index) =>
+              renderEmojiButton(emoji, index),
+            )}
           </View>
 
           <View

@@ -315,6 +315,8 @@ export type Modal =
       name: 'emoji-autocomplete';
       options: {
         onSelect: (emoji: string | null) => void;
+        recentFlags?: string[];
+        recentFlagsLimit?: number;
         onClose?: () => void;
       };
     }
@@ -323,7 +325,8 @@ export type Modal =
       options: {
         value: TransactionEntity['flag'];
         description?: string;
-        onSave: (flag: TransactionEntity['flag']) => void;
+        recentFlags?: string[];
+        onSave: (flag: TransactionEntity['flag']) => void | Promise<void>;
         onClose?: () => void;
       };
     }

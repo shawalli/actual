@@ -121,6 +121,46 @@ test.describe('Mobile Transactions', () => {
     );
   });
 
+  test('creates and expands a gift-card split transaction', async () => {
+    const transactionEntryPage = await navigation.goToTransactionEntryPage();
+
+    await transactionEntryPage.fillAmount('12.34');
+    await transactionEntryPage.header.click();
+    await transactionEntryPage.fillField(
+      page.getByTestId('payee-field'),
+      'Kroger',
+    );
+    await transactionEntryPage.fillField(
+      page.getByTestId('category-field'),
+      'Clothing',
+    );
+    await transactionEntryPage.fillField(
+      page.getByTestId('account-field'),
+      'Ally Savings',
+    );
+
+    await page.getByTestId('gift-card-action').click();
+
+    const giftCardSummary = page.getByTestId('gift-card-summary');
+    await expect(giftCardSummary).toContainText('Gift Card');
+    await expect(
+      transactionEntryPage.footer.getByRole('button', {
+        name: 'Add new split',
+      }),
+    ).toBeVisible();
+    await expect(transactionEntryPage.addTransactionButton).toBeVisible();
+
+    await giftCardSummary.click();
+    await expect(
+      page.getByTestId(/^category-field-/).filter({ hasText: 'Income' }),
+    ).toBeVisible();
+
+    await transactionEntryPage.footer
+      .getByRole('button', { name: 'Add new split' })
+      .click();
+    await expect(page.getByText('Delete split')).toHaveCount(3);
+  });
+
   test('creates a flagged transaction from `/accounts/:id` page', async () => {
     const accountsPage = await navigation.goToAccountsPage();
     const accountPage = await accountsPage.openNthAccount(2);

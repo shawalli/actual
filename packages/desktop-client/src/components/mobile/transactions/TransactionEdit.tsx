@@ -65,7 +65,6 @@ import {
 import type {
   AccountEntity,
   CategoryEntity,
-  CategoryGroupEntity,
   PayeeEntity,
   TransactionEntity,
 } from '@actual-app/core/types/models';
@@ -125,6 +124,7 @@ import { setLastTransaction } from '#transactions/transactionsSlice';
 import { getStatusLabel } from '#util/schedule';
 
 import { AmountInput } from './AmountInput';
+import { getGiftCardCategoryId, shouldShowGiftCardActions } from './giftCard';
 import { SplitAmountInput } from './SplitAmountInput';
 
 function getFieldName(transactionId: TransactionEntity['id'], field: string) {
@@ -188,17 +188,6 @@ export function lookupName(items: CategoryEntity[], id?: CategoryEntity['id']) {
     return null;
   }
   return items.find(item => item.id === id)?.name;
-}
-
-function getGiftCardCategoryId(categoryGroups: CategoryGroupEntity[]) {
-  const incomeCategories =
-    categoryGroups.find(group => group.is_income)?.categories ?? [];
-
-  return (
-    incomeCategories.find(
-      category => !category.hidden && category.name.toLowerCase() === 'income',
-    )?.id ?? incomeCategories.find(category => !category.hidden)?.id
-  );
 }
 
 const dropdownChevron = (
@@ -333,19 +322,10 @@ function Footer({
 }: FooterProps) {
   const [transaction, ...childTransactions] = transactions;
   const emptySplitTransaction = childTransactions.find(t => t.amount === 0);
-  const hasGiftCardSplit = hasGiftCardChild({
-    ...transaction,
-    subtransactions: childTransactions,
+  const shouldShowGiftCardFooterActions = shouldShowGiftCardActions({
+    isAdding,
+    transactions,
   });
-  const hasFilledNormalSplit = childTransactions.some(
-    childTransaction =>
-      !childTransaction.isGiftCard && childTransaction.amount !== 0,
-  );
-  const shouldShowGiftCardActions =
-    isAdding &&
-    !!transaction.account &&
-    hasGiftCardSplit &&
-    hasFilledNormalSplit;
   const onClickRemainingSplit = () => {
     if (childTransactions.length === 0) {
       onSplit(transaction.id);
@@ -428,7 +408,7 @@ function Footer({
             <Trans>Select account</Trans>
           </Text>
         </Button>
-      ) : shouldShowGiftCardActions ? (
+      ) : shouldShowGiftCardFooterActions ? (
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Button
             variant="primary"
@@ -558,6 +538,7 @@ function GiftCardTransactionSummary({
           backgroundColor: 'transparent',
         }}
         onPress={onExpand}
+        data-testid="gift-card-summary"
       >
         <GiftCardIcon
           width={17}

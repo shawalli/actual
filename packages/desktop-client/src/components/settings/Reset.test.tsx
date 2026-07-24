@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 
 import { useLocalPref } from '#hooks/useLocalPref';
@@ -11,7 +11,8 @@ vi.mock('#hooks/useLocalPref', () => ({
 }));
 
 describe('ResetTransactionColumnWidths', () => {
-  it('removes the stored transaction column widths', () => {
+  it('removes the stored transaction column widths and shows a completion message', async () => {
+    vi.useFakeTimers();
     const removeColumnWidths = vi.fn();
     vi.mocked(useLocalPref).mockReturnValue([
       undefined,
@@ -25,5 +26,17 @@ describe('ResetTransactionColumnWidths', () => {
 
     expect(useLocalPref).toHaveBeenCalledWith('transactions.columnWidths');
     expect(removeColumnWidths).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByText('Transaction column widths reset.'),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    expect(
+      screen.getByText('Transaction column widths reset.'),
+    ).toBeInTheDocument();
+    vi.useRealTimers();
   });
 });

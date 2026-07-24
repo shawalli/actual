@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { Trans } from 'react-i18next';
 
 import { ButtonWithLoading } from '@actual-app/components/button';
+import { Paragraph } from '@actual-app/components/paragraph';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
+import { View } from '@actual-app/components/view';
 import { send } from '@actual-app/core/platform/client/connection';
 
 import { resetSync } from '#app/appSlice';
@@ -91,13 +94,44 @@ export function ResetSync() {
 
 export function ResetTransactionColumnWidths() {
   const [, , removeColumnWidths] = useLocalPref('transactions.columnWidths');
+  const [isResetting, setIsResetting] = useState(false);
+  const [hasReset, setHasReset] = useState(false);
+
+  async function onResetColumnWidths() {
+    setIsResetting(true);
+    setHasReset(false);
+
+    await Promise.all([
+      removeColumnWidths(),
+      new Promise(resolve => setTimeout(resolve, 300)),
+    ]);
+
+    setHasReset(true);
+    setIsResetting(false);
+  }
 
   return (
     <Setting
       primaryAction={
-        <ButtonWithLoading onPress={removeColumnWidths}>
-          <Trans>Reset columns</Trans>
-        </ButtonWithLoading>
+        <View
+          style={{
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '1em',
+          }}
+        >
+          <ButtonWithLoading
+            isLoading={isResetting}
+            onPress={onResetColumnWidths}
+          >
+            <Trans>Reset columns</Trans>
+          </ButtonWithLoading>
+          {hasReset && (
+            <Paragraph style={{ color: theme.noticeTextLight }}>
+              <Trans>Transaction column widths reset.</Trans>
+            </Paragraph>
+          )}
+        </View>
       }
     >
       <Text>

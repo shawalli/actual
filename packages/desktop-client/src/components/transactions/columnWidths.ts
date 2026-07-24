@@ -14,6 +14,9 @@ export type TransactionColumnWidth = number | 'flex';
 export type TransactionColumnWidths = Partial<
   Record<TransactionColumnId, number>
 >;
+export type TransactionColumnRenderWidths = Partial<
+  Record<TransactionColumnId, TransactionColumnWidth>
+>;
 
 const defaultWidths: Record<TransactionColumnId, TransactionColumnWidth> = {
   date: 110,
@@ -53,7 +56,7 @@ export function getVisibleTransactionColumns({
 
 export function getTransactionColumnWidth(
   column: TransactionColumnId,
-  widths: TransactionColumnWidths,
+  widths: TransactionColumnRenderWidths,
 ): TransactionColumnWidth {
   return widths[column] ?? defaultWidths[column];
 }
@@ -144,4 +147,79 @@ export function getResizedAdjacentColumnWidths({
     [leftColumn]: leftWidth,
     [rightColumn]: totalWidth - leftWidth,
   };
+}
+
+export function fitTransactionColumnWidths({
+  widths,
+  visibleColumns,
+  availableWidth,
+  fixedWidth,
+}: {
+  widths: TransactionColumnWidths;
+  visibleColumns: TransactionColumnId[];
+  availableWidth: number;
+  fixedWidth: number;
+}): TransactionColumnWidths {
+  if (availableWidth <= 0) return widths;
+
+  const numericColumns = visibleColumns.filter(
+    column => typeof widths[column] === 'number',
+  );
+  const flexibleMinimumWidth = visibleColumns
+    .filter(column => typeof widths[column] !== 'number')
+    .reduce((total, column) => total + minimumWidths[column], 0);
+  const totalMinimumWidth = numericColumns.reduce(
+    (total, column) => total + minimumWidths[column],
+    0,
+  );
+  const targetNumericWidth = Math.max(
+    totalMinimumWidth,
+    availableWidth - fixedWidth - flexibleMinimumWidth,
+  );
+  const currentNumericWidth = numericColumns.reduce(
+    (total, column) => total + Math.max(widths[column]!, minimumWidths[column]),
+    0,
+  );
+
+  if (targetNumericWidth >= currentNumericWidth) return widths;
+
+  const currentExtraWidth = currentNumericWidth - totalMinimumWidth;
+  const targetExtraWidth = targetNumericWidth - totalMinimumWidth;
+  const result = { ...widths };
+  let remainingWidth = targetNumericWidth;
+
+  for (const [index, column] of numericColumns.entries()) {
+    const currentWidth = Math.max(widths[column]!, minimumWidths[column]);
+    const width =
+      index === numericColumns.length - 1
+        ? remainingWidth
+        : Math.round(
+            minimumWidths[column] +
+              (currentWidth - minimumWidths[column]) *
+                (targetExtraWidth / currentExtraWidth),
+          );
+    result[column] = width;
+    remainingWidth -= width;
+  }
+
+  return result;
+}
+
+export function fillTrailingTransactionColumn({
+  widths,
+  visibleColumns,
+}: {
+  widths: TransactionColumnWidths;
+  visibleColumns: TransactionColumnId[];
+}): TransactionColumnRenderWidths {
+  if (
+    visibleColumns.some(
+      column => getTransactionColumnWidth(column, widths) === 'flex',
+    )
+  ) {
+    return widths;
+  }
+
+  const trailingColumn = visibleColumns.at(-1);
+  return trailingColumn ? { ...widths, [trailingColumn]: 'flex' } : widths;
 }

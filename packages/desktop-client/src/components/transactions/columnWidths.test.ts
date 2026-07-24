@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   constrainTransactionColumnWidth,
+  fillTrailingTransactionColumn,
+  fitTransactionColumnWidths,
   getResizedAdjacentColumnWidths,
   getTransactionColumnWidth,
   getVisibleTransactionColumns,
@@ -81,5 +83,25 @@ describe('transaction column widths', () => {
         rightStartWidth: 220,
       }),
     ).toEqual({ notes: 280, category: 120 });
+  });
+
+  it('fits stored widths into a narrower viewport without changing flex columns', () => {
+    expect(
+      fitTransactionColumnWidths({
+        widths: { notes: 400, category: 400 },
+        visibleColumns: ['notes', 'category', 'payee'],
+        availableWidth: 520,
+        fixedWidth: 0,
+      }),
+    ).toEqual({ notes: 200, category: 200 });
+  });
+
+  it('uses the trailing data column to fill remaining space when needed', () => {
+    expect(
+      fillTrailingTransactionColumn({
+        widths: { date: 110, payee: 200, notes: 200 },
+        visibleColumns: ['date', 'payee', 'notes'],
+      }),
+    ).toEqual({ date: 110, payee: 200, notes: 'flex' });
   });
 });

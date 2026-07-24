@@ -148,6 +148,8 @@ import {
 import { getStatusLabel } from '#util/schedule';
 
 import {
+  fillTrailingTransactionColumn,
+  fitTransactionColumnWidths,
   getResizedAdjacentColumnWidths,
   getTransactionColumnMinimumWidth,
   getTransactionColumnWidth,
@@ -156,6 +158,7 @@ import {
 } from './columnWidths';
 import type {
   TransactionColumnId,
+  TransactionColumnRenderWidths,
   TransactionColumnWidths,
 } from './columnWidths';
 import {
@@ -183,7 +186,7 @@ type TransactionHeaderProps = {
   onSort: (field: string, ascDesc: 'asc' | 'desc') => void;
   ascDesc: 'asc' | 'desc';
   field: string;
-  columnWidths: TransactionColumnWidths;
+  columnWidths: TransactionColumnRenderWidths;
   onResizeStart: (
     column: TransactionColumnId,
     event: PointerEvent<HTMLDivElement>,
@@ -608,6 +611,7 @@ function HeaderCell({
         borderTopWidth: 0,
         borderBottomWidth: 0,
         position: 'relative',
+        ...(marginLeft === 'auto' && { marginLeft }),
       }}
       unexposedContent={({ value: cellValue }) => (
         <>
@@ -1111,7 +1115,7 @@ type TransactionProps = {
   index: number;
   recentFlags: string[];
   onRecordRecentFlag: (flag: string | null | undefined) => void;
-  columnWidths: TransactionColumnWidths;
+  columnWidths: TransactionColumnRenderWidths;
 };
 
 const Transaction = memo(function Transaction({
@@ -2519,7 +2523,7 @@ type NewTransactionProps = {
   showHiddenCategories?: boolean;
   recentFlags: string[];
   onRecordRecentFlag: (flag: string | null | undefined) => void;
-  columnWidths: TransactionColumnWidths;
+  columnWidths: TransactionColumnRenderWidths;
 };
 function NewTransaction({
   transactions,
@@ -2792,6 +2796,7 @@ function TransactionTableInner({
   const containerRef = useRef<HTMLDivElement>(null);
   const isAddingPrev = usePrevious(props.isAdding);
   const [scrollWidth, setScrollWidth] = useState(0);
+  const [availableTableWidth, setAvailableTableWidth] = useState(0);
   const [storedColumnWidths, setStoredColumnWidths] = useLocalPref(
     'transactions.columnWidths',
   );
@@ -2814,6 +2819,45 @@ function TransactionTableInner({
       }),
     [props.showAccount, props.showBalances],
   );
+  const fixedColumnWidth = 20 + 45 + 5 + (props.showCleared ? 38 : 0);
+  const effectiveColumnWidths = useMemo(
+    () =>
+      fillTrailingTransactionColumn({
+        widths: fitTransactionColumnWidths({
+          widths: columnWidths,
+          visibleColumns,
+          availableWidth: availableTableWidth,
+          fixedWidth: fixedColumnWidth,
+        }),
+        visibleColumns,
+      }),
+    [availableTableWidth, columnWidths, fixedColumnWidth, visibleColumns],
+  );
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (container == null) return;
+    const tableContainer = container;
+
+    function updateAvailableTableWidth() {
+      setAvailableTableWidth(tableContainer.getBoundingClientRect().width);
+    }
+
+    updateAvailableTableWidth();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateAvailableTableWidth);
+      return () =>
+        window.removeEventListener('resize', updateAvailableTableWidth);
+    }
+
+    const observer = new ResizeObserver(updateAvailableTableWidth);
+    observer.observe(tableContainer);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    resizeState.current = null;
+  }, [visibleColumns]);
   useEffect(() => {
     const nextWidths = sanitizeTransactionColumnWidths(storedColumnWidths);
     columnWidthsRef.current = nextWidths;
@@ -3134,7 +3178,7 @@ function TransactionTableInner({
         onNotesTagClick={onNotesTagClick}
         recentFlags={props.recentFlags}
         onRecordRecentFlag={props.onRecordRecentFlag}
-        columnWidths={columnWidths}
+        columnWidths={effectiveColumnWidths}
         splitError={
           hasSplitError ? (
             <TransactionError
@@ -3194,7 +3238,7 @@ function TransactionTableInner({
           ascDesc={props.ascDesc}
           field={props.sortField}
           showSelection={props.showSelection}
-          columnWidths={columnWidths}
+          columnWidths={effectiveColumnWidths}
           onResizeStart={onResizeStart}
           onResetColumnWidth={onResetColumnWidth}
           resizableColumns={visibleColumns.slice(0, -1)}
@@ -3240,7 +3284,7 @@ function TransactionTableInner({
               showHiddenCategories={showHiddenCategories}
               recentFlags={props.recentFlags}
               onRecordRecentFlag={props.onRecordRecentFlag}
-              columnWidths={columnWidths}
+              columnWidths={effectiveColumnWidths}
             />
           </View>
         )}

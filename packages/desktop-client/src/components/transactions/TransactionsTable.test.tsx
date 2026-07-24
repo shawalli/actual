@@ -547,6 +547,42 @@ describe('Transactions', () => {
     ).toEqual({});
   });
 
+  test('keeps resized columns aligned when optional columns are hidden and adding', () => {
+    renderTransactions({ isAdding: true, showAccount: false });
+
+    expect(screen.queryByTestId('resize-account')).not.toBeInTheDocument();
+
+    const divider = screen.getByTestId('resize-date');
+    fireEvent.pointerDown(divider, { button: 0, clientX: 10 });
+    fireEvent.pointerMove(window, { clientX: 100 });
+    fireEvent.pointerUp(window);
+
+    for (const dateCell of screen.getAllByTestId('date')) {
+      expect(dateCell).toHaveStyle({ width: '80px' });
+    }
+  });
+
+  test('uses the trailing data column to fill space when every visible column is fixed', () => {
+    localStorage.setItem(
+      columnWidthsStorageKey,
+      JSON.stringify({
+        date: 110,
+        account: 180,
+        payee: 180,
+        notes: 180,
+        category: 180,
+        debit: 100,
+        credit: 100,
+      }),
+    );
+
+    renderTransactions();
+
+    expect(screen.getByTestId('deposit')).toHaveStyle({
+      flex: '1 1 0px',
+    });
+  });
+
   test('preview transactions show schedule name in notes', async () => {
     const scheduleName = 'Monthly rent';
     schedules = [

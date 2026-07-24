@@ -10,7 +10,7 @@
 
 This project is a soft fork of actualbudget/actual ("the root project"). It contains all of the features and functionality of the root project, as well as additional contributions of mine that were not approved for the root project. Right now, the main feature this repo has is transaction flags.
 
-### Unique Features
+### ⭐️ Unique Features ⭐️
 
 - **Resizable Columns** - The [long-sought-after feature](https://github.com/actualbudget/actual/issues/536) is implemented in this fork for All-Accounts and Account-specific views! Some columns remain static, such as the cleared column and the flags column. But most other columns are resizeable on desktop. Your preferences persist in local storage, so the next time you load up Actual your column width changes are still there. To clear columns back to their defaults, use the reset button in Settings.
 

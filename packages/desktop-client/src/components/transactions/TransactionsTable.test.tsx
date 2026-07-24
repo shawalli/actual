@@ -43,6 +43,7 @@ import { tagQueries } from '#tags/queries';
 import { TransactionTable } from './TransactionsTable';
 
 const recentFlagsStorageKey = 'undefined-transactions.recentFlags';
+const columnWidthsStorageKey = 'undefined-transactions.columnWidths';
 
 const queryClient = createTestQueryClient();
 
@@ -203,6 +204,7 @@ type LiveTransactionTableProps = {
   isAdding: boolean;
   onTransactionsChange?: (newTrans: TransactionEntity[]) => void;
   onCloseAddTransaction?: () => void;
+  onSort?: (field: string, ascDesc: 'asc' | 'desc') => void;
 };
 
 function LiveTransactionTable(props: LiveTransactionTableProps) {
@@ -278,6 +280,9 @@ function LiveTransactionTable(props: LiveTransactionTableProps) {
                   onAdd={onAdd}
                   onAddSplit={onAddSplit}
                   onCreatePayee={onCreatePayee}
+                  onSort={props.onSort ?? vi.fn()}
+                  sortField=""
+                  ascDesc="asc"
                   showSelection
                   allowSplitTransaction
                 />
@@ -328,6 +333,7 @@ function initBasicServer() {
 beforeEach(() => {
   schedules = [];
   localStorage.removeItem(recentFlagsStorageKey);
+  localStorage.removeItem(columnWidthsStorageKey);
   initBasicServer();
 });
 
@@ -515,6 +521,32 @@ function expectToBeEditingField(
 }
 
 describe('Transactions', () => {
+  test('persists a resized column and resets it on divider double-click', () => {
+    const onSort = vi.fn();
+    renderTransactions({ onSort });
+
+    const divider = screen.getByTestId('resize-date');
+    fireEvent.pointerDown(divider, { button: 0, clientX: 10 });
+    fireEvent.pointerMove(window, { clientX: 100 });
+    fireEvent.pointerUp(window);
+
+    expect(
+      JSON.parse(localStorage.getItem(columnWidthsStorageKey) ?? '{}'),
+    ).toEqual({ date: 80, account: 100 });
+    expect(screen.getAllByTestId('date')[0]).toHaveStyle({ width: '80px' });
+    expect(screen.getAllByTestId('date')[1]).toHaveStyle({ width: '80px' });
+    expect(onSort).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByTestId('date')[0].querySelector('button')!);
+    expect(onSort).toHaveBeenCalledWith('date', 'desc');
+
+    fireEvent.doubleClick(divider);
+
+    expect(
+      JSON.parse(localStorage.getItem(columnWidthsStorageKey) ?? '{}'),
+    ).toEqual({});
+  });
+
   test('preview transactions show schedule name in notes', async () => {
     const scheduleName = 'Monthly rent';
     schedules = [

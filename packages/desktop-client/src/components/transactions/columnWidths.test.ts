@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   constrainTransactionColumnWidth,
+  getResizedAdjacentColumnWidths,
   getTransactionColumnWidth,
   getVisibleTransactionColumns,
   sanitizeTransactionColumnWidths,
@@ -59,5 +60,26 @@ describe('transaction column widths', () => {
         fixedWidth: 70,
       }),
     ).toBe(180);
+  });
+
+  it('resizes only the two columns adjacent to a divider', () => {
+    expect(
+      getResizedAdjacentColumnWidths({
+        leftColumn: 'notes',
+        rightColumn: 'category',
+        requestedLeftWidth: 250,
+        leftStartWidth: 180,
+        rightStartWidth: 220,
+      }),
+    ).toEqual({ notes: 250, category: 150 });
+    expect(
+      getResizedAdjacentColumnWidths({
+        leftColumn: 'notes',
+        rightColumn: 'category',
+        requestedLeftWidth: 350,
+        leftStartWidth: 180,
+        rightStartWidth: 220,
+      }),
+    ).toEqual({ notes: 280, category: 120 });
   });
 });

@@ -115,3 +115,33 @@ export function constrainTransactionColumnWidth({
     Math.min(maximumWidth, Math.max(minimumWidths[column], requestedWidth)),
   );
 }
+
+export function getResizedAdjacentColumnWidths({
+  leftColumn,
+  rightColumn,
+  requestedLeftWidth,
+  leftStartWidth,
+  rightStartWidth,
+}: {
+  leftColumn: TransactionColumnId;
+  rightColumn: TransactionColumnId;
+  requestedLeftWidth: number;
+  leftStartWidth: number;
+  rightStartWidth: number;
+}): TransactionColumnWidths {
+  const totalWidth = Math.max(
+    minimumWidths[leftColumn] + minimumWidths[rightColumn],
+    leftStartWidth + rightStartWidth,
+  );
+  const leftWidth = Math.round(
+    Math.min(
+      totalWidth - minimumWidths[rightColumn],
+      Math.max(minimumWidths[leftColumn], requestedLeftWidth),
+    ),
+  );
+
+  return {
+    [leftColumn]: leftWidth,
+    [rightColumn]: totalWidth - leftWidth,
+  };
+}

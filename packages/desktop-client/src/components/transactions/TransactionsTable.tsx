@@ -1,6 +1,5 @@
 import {
   createElement,
-  createRef,
   forwardRef,
   memo,
   useCallback,
@@ -13,6 +12,7 @@ import type {
   CSSProperties,
   ForwardedRef,
   KeyboardEvent,
+  PointerEvent,
   ReactNode,
   Ref,
   RefObject,
@@ -148,6 +148,17 @@ import {
 import { getStatusLabel } from '#util/schedule';
 
 import {
+  getResizedAdjacentColumnWidths,
+  getTransactionColumnMinimumWidth,
+  getTransactionColumnWidth,
+  getVisibleTransactionColumns,
+  sanitizeTransactionColumnWidths,
+} from './columnWidths';
+import type {
+  TransactionColumnId,
+  TransactionColumnWidths,
+} from './columnWidths';
+import {
   deserializeTransaction,
   isLastChild,
   makeTemporaryTransactions,
@@ -172,6 +183,15 @@ type TransactionHeaderProps = {
   onSort: (field: string, ascDesc: 'asc' | 'desc') => void;
   ascDesc: 'asc' | 'desc';
   field: string;
+  columnWidths: TransactionColumnWidths;
+  onResizeStart: (
+    column: TransactionColumnId,
+    event: PointerEvent<HTMLDivElement>,
+    startWidth: number,
+    adjacentWidth: number,
+  ) => void;
+  onResetColumnWidth: (column: TransactionColumnId) => void;
+  resizableColumns: TransactionColumnId[];
 };
 
 const TransactionHeader = memo(
@@ -186,6 +206,10 @@ const TransactionHeader = memo(
     ascDesc,
     field,
     showSelection,
+    columnWidths,
+    onResizeStart,
+    onResetColumnWidth,
+    resizableColumns,
   }: TransactionHeaderProps) => {
     const dispatchSelected = useSelectedDispatch();
     const { t } = useTranslation();
@@ -242,7 +266,7 @@ const TransactionHeader = memo(
         )}
         <HeaderCell
           value={t('Date')}
-          width={110}
+          width={getTransactionColumnWidth('date', columnWidths)}
           alignItems="flex"
           marginLeft={-5}
           id="date"
@@ -250,6 +274,9 @@ const TransactionHeader = memo(
           onClick={() =>
             onSort('date', selectAscDesc(field, ascDesc, 'date', 'desc'))
           }
+          resizeColumn={resizableColumns.includes('date') ? 'date' : undefined}
+          onResizeStart={onResizeStart}
+          onResetColumnWidth={onResetColumnWidth}
         />
         <HeaderCell
           value=""
@@ -266,7 +293,7 @@ const TransactionHeader = memo(
         {showAccount && (
           <HeaderCell
             value={t('Account')}
-            width="flex"
+            width={getTransactionColumnWidth('account', columnWidths)}
             alignItems="flex"
             marginLeft={-5}
             id="account"
@@ -274,11 +301,16 @@ const TransactionHeader = memo(
             onClick={() =>
               onSort('account', selectAscDesc(field, ascDesc, 'account', 'asc'))
             }
+            resizeColumn={
+              resizableColumns.includes('account') ? 'account' : undefined
+            }
+            onResizeStart={onResizeStart}
+            onResetColumnWidth={onResetColumnWidth}
           />
         )}
         <HeaderCell
           value={t('Payee')}
-          width="flex"
+          width={getTransactionColumnWidth('payee', columnWidths)}
           alignItems="flex"
           marginLeft={-5}
           id="payee"
@@ -286,10 +318,15 @@ const TransactionHeader = memo(
           onClick={() =>
             onSort('payee', selectAscDesc(field, ascDesc, 'payee', 'asc'))
           }
+          resizeColumn={
+            resizableColumns.includes('payee') ? 'payee' : undefined
+          }
+          onResizeStart={onResizeStart}
+          onResetColumnWidth={onResetColumnWidth}
         />
         <HeaderCell
           value={t('Notes')}
-          width="flex"
+          width={getTransactionColumnWidth('notes', columnWidths)}
           alignItems="flex"
           marginLeft={-5}
           id="notes"
@@ -297,11 +334,16 @@ const TransactionHeader = memo(
           onClick={() =>
             onSort('notes', selectAscDesc(field, ascDesc, 'notes', 'asc'))
           }
+          resizeColumn={
+            resizableColumns.includes('notes') ? 'notes' : undefined
+          }
+          onResizeStart={onResizeStart}
+          onResetColumnWidth={onResetColumnWidth}
         />
         {showCategory && (
           <HeaderCell
             value={t('Category')}
-            width="flex"
+            width={getTransactionColumnWidth('category', columnWidths)}
             alignItems="flex"
             marginLeft={-5}
             id="category"
@@ -312,11 +354,16 @@ const TransactionHeader = memo(
                 selectAscDesc(field, ascDesc, 'category', 'asc'),
               )
             }
+            resizeColumn={
+              resizableColumns.includes('category') ? 'category' : undefined
+            }
+            onResizeStart={onResizeStart}
+            onResetColumnWidth={onResetColumnWidth}
           />
         )}
         <HeaderCell
           value={t('Payment')}
-          width={100}
+          width={getTransactionColumnWidth('debit', columnWidths)}
           alignItems="flex-end"
           marginRight={-5}
           id="payment"
@@ -324,10 +371,15 @@ const TransactionHeader = memo(
           onClick={() =>
             onSort('payment', selectAscDesc(field, ascDesc, 'payment', 'asc'))
           }
+          resizeColumn={
+            resizableColumns.includes('debit') ? 'debit' : undefined
+          }
+          onResizeStart={onResizeStart}
+          onResetColumnWidth={onResetColumnWidth}
         />
         <HeaderCell
           value={t('Deposit')}
-          width={100}
+          width={getTransactionColumnWidth('credit', columnWidths)}
           alignItems="flex-end"
           marginRight={-5}
           id="deposit"
@@ -335,14 +387,24 @@ const TransactionHeader = memo(
           onClick={() =>
             onSort('deposit', selectAscDesc(field, ascDesc, 'deposit', 'desc'))
           }
+          resizeColumn={
+            resizableColumns.includes('credit') ? 'credit' : undefined
+          }
+          onResizeStart={onResizeStart}
+          onResetColumnWidth={onResetColumnWidth}
         />
         {showBalance && (
           <HeaderCell
             value={t('Balance')}
-            width={103}
+            width={getTransactionColumnWidth('balance', columnWidths)}
             alignItems="flex-end"
             marginRight={-5}
             id="balance"
+            resizeColumn={
+              resizableColumns.includes('balance') ? 'balance' : undefined
+            }
+            onResizeStart={onResizeStart}
+            onResetColumnWidth={onResetColumnWidth}
           />
         )}
         {showCleared && (
@@ -462,6 +524,14 @@ type HeaderCellProps = {
   icon?: 'asc' | 'desc' | 'clickable';
   onClick?: () => void;
   ariaLabel?: string;
+  resizeColumn?: TransactionColumnId;
+  onResizeStart?: (
+    column: TransactionColumnId,
+    event: PointerEvent<HTMLDivElement>,
+    startWidth: number,
+    adjacentWidth: number,
+  ) => void;
+  onResetColumnWidth?: (column: TransactionColumnId) => void;
 } & Pick<CSSProperties, 'width' | 'alignItems' | 'marginLeft' | 'marginRight'>;
 
 function HeaderCell({
@@ -474,6 +544,9 @@ function HeaderCell({
   icon,
   onClick,
   ariaLabel,
+  resizeColumn,
+  onResizeStart,
+  onResetColumnWidth,
 }: HeaderCellProps) {
   const style = {
     whiteSpace: 'nowrap' as CSSProperties['whiteSpace'],
@@ -484,6 +557,46 @@ function HeaderCell({
     marginLeft,
     marginRight,
   };
+  const resizeHandle =
+    resizeColumn && onResizeStart && onResetColumnWidth ? (
+      <div
+        aria-orientation="vertical"
+        data-testid={`resize-${resizeColumn}`}
+        role="separator"
+        style={{
+          cursor: 'col-resize',
+          height: '100%',
+          position: 'absolute',
+          right: -3,
+          top: 0,
+          width: 6,
+          zIndex: 1,
+        }}
+        onDoubleClick={event => {
+          event.preventDefault();
+          event.stopPropagation();
+          onResetColumnWidth(resizeColumn);
+        }}
+        onPointerDown={event => {
+          event.preventDefault();
+          event.stopPropagation();
+          const cell = event.currentTarget.parentElement?.parentElement;
+          let adjacentCell = cell?.nextElementSibling;
+          while (
+            adjacentCell != null &&
+            !adjacentCell.querySelector('[data-testid^="resize-"]')
+          ) {
+            adjacentCell = adjacentCell.nextElementSibling;
+          }
+          onResizeStart(
+            resizeColumn,
+            event,
+            cell?.getBoundingClientRect().width ?? 0,
+            adjacentCell?.getBoundingClientRect().width ?? 0,
+          );
+        }}
+      />
+    ) : null;
 
   return (
     <CustomCell
@@ -494,75 +607,79 @@ function HeaderCell({
       style={{
         borderTopWidth: 0,
         borderBottomWidth: 0,
+        position: 'relative',
       }}
-      unexposedContent={({ value: cellValue }) =>
-        onClick ? (
-          <Button
-            variant="bare"
-            onPress={onClick}
-            style={style}
-            aria-label={ariaLabel}
-          >
-            {id === 'flag' ? (
-              <>
-                <SvgFlag
-                  style={{
-                    width: 14,
-                    height: 14,
-                    color: theme.tableHeaderText,
-                  }}
-                />
-                {icon === 'asc' && (
-                  <SvgArrowDown
-                    width={10}
-                    height={10}
-                    style={{ marginLeft: 5 }}
+      unexposedContent={({ value: cellValue }) => (
+        <>
+          {onClick ? (
+            <Button
+              variant="bare"
+              onPress={onClick}
+              style={style}
+              aria-label={ariaLabel}
+            >
+              {id === 'flag' ? (
+                <>
+                  <SvgFlag
+                    style={{
+                      width: 14,
+                      height: 14,
+                      color: theme.tableHeaderText,
+                    }}
                   />
-                )}
-                {icon === 'desc' && (
-                  <SvgArrowUp
-                    width={10}
-                    height={10}
-                    style={{ marginLeft: 5 }}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                <UnexposedCellContent value={cellValue} />
-                {icon === 'asc' && (
-                  <SvgArrowDown
-                    width={10}
-                    height={10}
-                    style={{ marginLeft: 5 }}
-                  />
-                )}
-                {icon === 'desc' && (
-                  <SvgArrowUp
-                    width={10}
-                    height={10}
-                    style={{ marginLeft: 5 }}
-                  />
-                )}
-              </>
-            )}
-          </Button>
-        ) : id === 'flag' ? (
-          <View
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <SvgFlag
-              style={{ width: 14, height: 14, color: theme.tableHeaderText }}
-            />
-          </View>
-        ) : (
-          <Text style={style}>{cellValue}</Text>
-        )
-      }
+                  {icon === 'asc' && (
+                    <SvgArrowDown
+                      width={10}
+                      height={10}
+                      style={{ marginLeft: 5 }}
+                    />
+                  )}
+                  {icon === 'desc' && (
+                    <SvgArrowUp
+                      width={10}
+                      height={10}
+                      style={{ marginLeft: 5 }}
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <UnexposedCellContent value={cellValue} />
+                  {icon === 'asc' && (
+                    <SvgArrowDown
+                      width={10}
+                      height={10}
+                      style={{ marginLeft: 5 }}
+                    />
+                  )}
+                  {icon === 'desc' && (
+                    <SvgArrowUp
+                      width={10}
+                      height={10}
+                      style={{ marginLeft: 5 }}
+                    />
+                  )}
+                </>
+              )}
+            </Button>
+          ) : id === 'flag' ? (
+            <View
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <SvgFlag
+                style={{ width: 14, height: 14, color: theme.tableHeaderText }}
+              />
+            </View>
+          ) : (
+            <Text style={style}>{cellValue}</Text>
+          )}
+          {resizeHandle}
+        </>
+      )}
     />
   );
 }
@@ -586,6 +703,7 @@ type PayeeCellProps = {
   onManagePayees: (id: PayeeEntity['id'] | undefined) => void;
   onNavigateToTransferAccount: (id: AccountEntity['id']) => void;
   onNavigateToSchedule: (id: ScheduleEntity['id']) => void;
+  width: CSSProperties['width'];
 };
 
 function PayeeCell({
@@ -605,6 +723,7 @@ function PayeeCell({
   onManagePayees,
   onNavigateToTransferAccount,
   onNavigateToSchedule,
+  width,
 }: PayeeCellProps) {
   const isCreatingPayee = useRef(false);
   const { t } = useTranslation();
@@ -618,7 +737,7 @@ function PayeeCell({
   return transaction.is_parent ? (
     <Cell
       name="payee"
-      width="flex"
+      width={width}
       focused={focused}
       style={{ padding: 0 }}
       plain
@@ -721,7 +840,7 @@ function PayeeCell({
     </Cell>
   ) : (
     <CustomCell
-      width="flex"
+      width={width}
       name="payee"
       textAlign="flex"
       value={payee?.id}
@@ -992,6 +1111,7 @@ type TransactionProps = {
   index: number;
   recentFlags: string[];
   onRecordRecentFlag: (flag: string | null | undefined) => void;
+  columnWidths: TransactionColumnWidths;
 };
 
 const Transaction = memo(function Transaction({
@@ -1055,6 +1175,7 @@ const Transaction = memo(function Transaction({
   index,
   recentFlags,
   onRecordRecentFlag,
+  columnWidths,
 }: TransactionProps) {
   const { t } = useTranslation();
 
@@ -1069,6 +1190,16 @@ const Transaction = memo(function Transaction({
   );
   const isPreview = isPreviewId(transaction.id);
   const isGiftCardChild = !!transaction.is_child && !!transaction.isGiftCard;
+  const dateWidth = getTransactionColumnWidth('date', columnWidths);
+  const accountWidth = getTransactionColumnWidth('account', columnWidths);
+  const payeeWidth = getTransactionColumnWidth('payee', columnWidths);
+  const notesWidth = getTransactionColumnWidth('notes', columnWidths);
+  const categoryWidth = getTransactionColumnWidth('category', columnWidths);
+  const debitWidth = getTransactionColumnWidth('debit', columnWidths);
+  const creditWidth = getTransactionColumnWidth('credit', columnWidths);
+  const balanceWidth = getTransactionColumnWidth('balance', columnWidths);
+  const childLeadingWidth =
+    typeof dateWidth === 'number' ? dateWidth + 20 : 130;
 
   if (
     originalTransaction !== prevTransaction ||
@@ -1601,9 +1732,9 @@ const Transaction = memo(function Transaction({
         {isChild && (
           <Field
             /* Selection and date blank placeholder for Child transaction */
-            width={130}
+            width={childLeadingWidth}
             style={{
-              width: 130,
+              width: childLeadingWidth,
               backgroundColor: theme.tableRowBackgroundHover,
               border: 0, // known z-order issue, bottom border for parent transaction hidden
             }}
@@ -1615,8 +1746,11 @@ const Transaction = memo(function Transaction({
         {isChild && showAccount && (
           <Field
             /* Account blank placeholder for Child transaction */
+            width={accountWidth}
             style={{
-              flex: 1,
+              ...(accountWidth === 'flex'
+                ? { flex: 1 }
+                : { width: accountWidth }),
               backgroundColor: theme.tableRowBackgroundHover,
               border: 0,
             }}
@@ -1674,7 +1808,7 @@ const Transaction = memo(function Transaction({
           <CustomCell
             /* Date field for non-child transaction */
             name="date"
-            width={110}
+            width={dateWidth}
             textAlign="flex"
             exposed={focusedField === 'date'}
             value={date}
@@ -1714,7 +1848,7 @@ const Transaction = memo(function Transaction({
           <CustomCell
             /* Account field for non-child transaction */
             name="account"
-            width="flex"
+            width={accountWidth}
             textAlign="flex"
             value={accountId}
             formatter={acctId => {
@@ -1778,6 +1912,7 @@ const Transaction = memo(function Transaction({
             onManagePayees={onManagePayees}
             onNavigateToTransferAccount={onNavigateToTransferAccount}
             onNavigateToSchedule={onNavigateToSchedule}
+            width={payeeWidth}
           />
         ))()}
 
@@ -1791,13 +1926,14 @@ const Transaction = memo(function Transaction({
             onUpdate('notes', value?.trim());
           }}
           onExpose={name => !isPreview && onEdit(id, name)}
+          width={notesWidth}
         />
 
         {(isPreview && !isChild) || isParent ? (
           <Cell
             /* Category field (Split button) for parent transactions */
             name="category"
-            width="flex"
+            width={categoryWidth}
             focused={focusedField === 'category'}
             style={{
               padding: 0,
@@ -1893,7 +2029,7 @@ const Transaction = memo(function Transaction({
             /* Category field for transfer and off budget transactions
               (NOT preview, it is covered first) */
             name="category"
-            width="flex"
+            width={categoryWidth}
             exposed={focusedField === 'category'}
             focused={focusedField === 'category'}
             onExpose={name => onEdit(id, name)}
@@ -1921,7 +2057,7 @@ const Transaction = memo(function Transaction({
           <CustomCell
             /* Category field for normal and child transactions */
             name="category"
-            width="flex"
+            width={categoryWidth}
             textAlign="flex"
             value={categoryId}
             formatter={value =>
@@ -1997,7 +2133,7 @@ const Transaction = memo(function Transaction({
         <InputCell
           /* Debit field for all transactions */
           type="input"
-          width={100}
+          width={debitWidth}
           name="debit"
           exposed={focusedField === 'debit'}
           focused={focusedField === 'debit'}
@@ -2031,7 +2167,7 @@ const Transaction = memo(function Transaction({
         <InputCell
           /* Credit field for all transactions */
           type="input"
-          width={100}
+          width={creditWidth}
           name="credit"
           exposed={focusedField === 'credit'}
           focused={focusedField === 'credit'}
@@ -2078,7 +2214,7 @@ const Transaction = memo(function Transaction({
                   : theme.numberPositive,
             }}
             style={{ ...styles.tnum, ...amountStyle }}
-            width={103}
+            width={balanceWidth}
             textAlign="right"
             privacyFilter
           />
@@ -2184,6 +2320,7 @@ type NotesCellProps = {
   onUpdate: (value: string) => void;
   onClickTag: (tag: string) => void;
   onExpose: (name: string) => void;
+  width: CSSProperties['width'];
 };
 
 function NotesCell({
@@ -2194,6 +2331,7 @@ function NotesCell({
   onUpdate,
   onClickTag,
   onExpose,
+  width,
 }: NotesCellProps) {
   const [inputValue, setInputValue] = useState(note);
   useEffect(() => {
@@ -2212,7 +2350,7 @@ function NotesCell({
 
   return (
     <CustomCell
-      width="flex"
+      width={width}
       name="notes"
       value={displayedNote}
       valueStyle={valueStyle}
@@ -2381,6 +2519,7 @@ type NewTransactionProps = {
   showHiddenCategories?: boolean;
   recentFlags: string[];
   onRecordRecentFlag: (flag: string | null | undefined) => void;
+  columnWidths: TransactionColumnWidths;
 };
 function NewTransaction({
   transactions,
@@ -2415,6 +2554,7 @@ function NewTransaction({
   showHiddenCategories,
   recentFlags,
   onRecordRecentFlag,
+  columnWidths,
 }: NewTransactionProps) {
   const error = transactions[0].error;
   const isDeposit = transactions[0].amount > 0;
@@ -2494,6 +2634,7 @@ function NewTransaction({
           showHiddenCategories={showHiddenCategories}
           recentFlags={recentFlags}
           onRecordRecentFlag={onRecordRecentFlag}
+          columnWidths={columnWidths}
         />
       ))}
       <View
@@ -2648,9 +2789,139 @@ function TransactionTableInner({
   showHiddenCategories,
   ...props
 }: TransactionTableInnerProps) {
-  const containerRef = createRef<HTMLDivElement>();
+  const containerRef = useRef<HTMLDivElement>(null);
   const isAddingPrev = usePrevious(props.isAdding);
   const [scrollWidth, setScrollWidth] = useState(0);
+  const [storedColumnWidths, setStoredColumnWidths] = useLocalPref(
+    'transactions.columnWidths',
+  );
+  const [columnWidths, setColumnWidths] = useState<TransactionColumnWidths>(
+    () => sanitizeTransactionColumnWidths(storedColumnWidths),
+  );
+  const columnWidthsRef = useRef(columnWidths);
+  const resizeState = useRef<{
+    leftColumn: TransactionColumnId;
+    rightColumn: TransactionColumnId;
+    startX: number;
+    leftStartWidth: number;
+    rightStartWidth: number;
+  } | null>(null);
+  const visibleColumns = useMemo(
+    () =>
+      getVisibleTransactionColumns({
+        showAccount: props.showAccount,
+        showBalance: props.showBalances,
+      }),
+    [props.showAccount, props.showBalances],
+  );
+  useEffect(() => {
+    const nextWidths = sanitizeTransactionColumnWidths(storedColumnWidths);
+    columnWidthsRef.current = nextWidths;
+    setColumnWidths(nextWidths);
+  }, [storedColumnWidths]);
+
+  const resizeColumns = useCallback(
+    ({
+      leftColumn,
+      rightColumn,
+      requestedLeftWidth,
+      leftStartWidth,
+      rightStartWidth,
+    }: {
+      leftColumn: TransactionColumnId;
+      rightColumn: TransactionColumnId;
+      requestedLeftWidth: number;
+      leftStartWidth: number;
+      rightStartWidth: number;
+    }) => {
+      setColumnWidths(current => {
+        const nextWidths = {
+          ...current,
+          ...getResizedAdjacentColumnWidths({
+            leftColumn,
+            rightColumn,
+            requestedLeftWidth,
+            leftStartWidth,
+            rightStartWidth,
+          }),
+        };
+        columnWidthsRef.current = nextWidths;
+        return nextWidths;
+      });
+    },
+    [],
+  );
+
+  const onResizeStart = useCallback(
+    (
+      column: TransactionColumnId,
+      event: PointerEvent<HTMLDivElement>,
+      startWidth: number,
+      adjacentWidth: number,
+    ) => {
+      if (event.button !== 0) return;
+      const columnIndex = visibleColumns.indexOf(column);
+      const adjacentColumn = visibleColumns[columnIndex + 1];
+      if (adjacentColumn == null) return;
+
+      resizeState.current = {
+        leftColumn: column,
+        rightColumn: adjacentColumn,
+        startX: event.clientX,
+        leftStartWidth: startWidth || getTransactionColumnMinimumWidth(column),
+        rightStartWidth:
+          adjacentWidth || getTransactionColumnMinimumWidth(adjacentColumn),
+      };
+    },
+    [visibleColumns],
+  );
+
+  const onResetColumnWidth = useCallback(
+    (column: TransactionColumnId) => {
+      setColumnWidths(current => {
+        const adjacentColumn =
+          visibleColumns[visibleColumns.indexOf(column) + 1];
+        const nextWidths = { ...current };
+        delete nextWidths[column];
+        if (adjacentColumn) {
+          delete nextWidths[adjacentColumn];
+        }
+        columnWidthsRef.current = nextWidths;
+        setStoredColumnWidths(nextWidths);
+        return nextWidths;
+      });
+    },
+    [setStoredColumnWidths, visibleColumns],
+  );
+
+  useEffect(() => {
+    function onPointerMove(event: globalThis.PointerEvent) {
+      const activeResize = resizeState.current;
+      if (activeResize == null) return;
+
+      resizeColumns({
+        leftColumn: activeResize.leftColumn,
+        rightColumn: activeResize.rightColumn,
+        requestedLeftWidth:
+          activeResize.leftStartWidth + event.clientX - activeResize.startX,
+        leftStartWidth: activeResize.leftStartWidth,
+        rightStartWidth: activeResize.rightStartWidth,
+      });
+    }
+
+    function onPointerUp() {
+      if (resizeState.current == null) return;
+      resizeState.current = null;
+      setStoredColumnWidths(columnWidthsRef.current);
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, [resizeColumns, setStoredColumnWidths]);
 
   function saveScrollWidth(parent: number, child: number) {
     const width = parent > 0 && child > 0 && parent - child;
@@ -2863,6 +3134,7 @@ function TransactionTableInner({
         onNotesTagClick={onNotesTagClick}
         recentFlags={props.recentFlags}
         onRecordRecentFlag={props.onRecordRecentFlag}
+        columnWidths={columnWidths}
         splitError={
           hasSplitError ? (
             <TransactionError
@@ -2922,6 +3194,10 @@ function TransactionTableInner({
           ascDesc={props.ascDesc}
           field={props.sortField}
           showSelection={props.showSelection}
+          columnWidths={columnWidths}
+          onResizeStart={onResizeStart}
+          onResetColumnWidth={onResetColumnWidth}
+          resizableColumns={visibleColumns.slice(0, -1)}
         />
 
         {props.isAdding && (
@@ -2964,6 +3240,7 @@ function TransactionTableInner({
               showHiddenCategories={showHiddenCategories}
               recentFlags={props.recentFlags}
               onRecordRecentFlag={props.onRecordRecentFlag}
+              columnWidths={columnWidths}
             />
           </View>
         )}

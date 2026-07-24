@@ -749,6 +749,23 @@ describe('Transactions', () => {
     });
   });
 
+  test('split child rows do not render an extra selection column', () => {
+    const [parent, child] = generateTransaction(
+      { account: accounts[0].id, amount: 5000 },
+      3000,
+    );
+    const { container } = renderTransactions({
+      transactions: [parent, child],
+    });
+
+    const rows = container.querySelectorAll(
+      '[data-testid="transaction-table"] [data-testid="row"]',
+    );
+    const childRow = rows[1];
+
+    expect(childRow.querySelector('[data-testid="select"]')).toBeNull();
+  });
+
   test('seeds recent flags from loaded transactions when storage is missing', async () => {
     const transactions = generateTransactions(3);
     transactions[0].flag = ':100:';

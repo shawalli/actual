@@ -36,7 +36,7 @@ import { ExportBudget } from './Export';
 import { FormatSettings } from './Format';
 import { LanguageSettings } from './LanguageSettings';
 import { RepairTransactions } from './RepairTransactions';
-import { ResetCache, ResetSync } from './Reset';
+import { ResetCache, ResetSync, ResetTransactionColumnWidths } from './Reset';
 import { ThemeSettings } from './Themes';
 import { AdvancedToggle, Setting } from './UI';
 
@@ -244,6 +244,7 @@ export function Settings() {
         <BudgetTypeSettings />
         {isElectron() && <Backups />}
         <ExportBudget />
+        <ResetTransactionColumnWidths />
         <AdvancedToggle>
           <AdvancedAbout />
           <ResetCache />

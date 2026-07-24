@@ -6,6 +6,7 @@ import { Text } from '@actual-app/components/text';
 import { send } from '@actual-app/core/platform/client/connection';
 
 import { resetSync } from '#app/appSlice';
+import { useLocalPref } from '#hooks/useLocalPref';
 import { useMetadataPref } from '#hooks/useMetadataPref';
 import { useDispatch } from '#redux';
 
@@ -84,6 +85,27 @@ export function ResetSync() {
           </Trans>
         </Text>
       )}
+    </Setting>
+  );
+}
+
+export function ResetTransactionColumnWidths() {
+  const [, , removeColumnWidths] = useLocalPref('transactions.columnWidths');
+
+  return (
+    <Setting
+      primaryAction={
+        <ButtonWithLoading onPress={removeColumnWidths}>
+          <Trans>Reset columns</Trans>
+        </ButtonWithLoading>
+      }
+    >
+      <Text>
+        <Trans>
+          <strong>Reset columns</strong> restores the default transaction column
+          widths.
+        </Trans>
+      </Text>
     </Setting>
   );
 }

@@ -1,4 +1,3 @@
-import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 
 import { CloseAccountModal } from './close-account-modal';
@@ -10,31 +9,7 @@ type TransactionEntry = {
   payee?: string;
   notes?: string;
   category?: string;
-  flag?: string;
 };
-
-const nativeFlagByShortcode = new Map([
-  [':large_blue_circle:', '🔵'],
-  [':orange_circle:', '🟠'],
-  [':green_circle:', '🟢'],
-]);
-
-async function selectFlagFromPopover(
-  popover: Locator,
-  shortcode: string,
-): Promise<void> {
-  const nativeFlag = nativeFlagByShortcode.get(shortcode);
-  if (!nativeFlag) {
-    throw new Error(`Unsupported flag shortcode in E2E helper: ${shortcode}`);
-  }
-
-  await popover
-    .getByRole('button')
-    .filter({ hasText: nativeFlag })
-    .first()
-    .click();
-  await popover.waitFor({ state: 'hidden', timeout: 2000 });
-}
 
 export class AccountPage {
   readonly page: Page;
@@ -184,6 +159,7 @@ export class AccountPage {
       category: row.getByTestId('category'),
       debit: row.getByTestId('debit'),
       credit: row.getByTestId('credit'),
+      balance: row.getByTestId('balance'),
       flag: row.getByTestId('flag'),
     };
   }
@@ -191,43 +167,6 @@ export class AccountPage {
   async clickSelectAction(action: string | RegExp) {
     await this.selectButton.click();
     await this.selectTooltip.getByRole('button', { name: action }).click();
-  }
-
-  /**
-   * Bulk-set a flag on the currently selected transactions.
-   * Shortcode format, e.g. ':large_blue_circle:'
-   */
-  async bulkSetFlag(shortcode: string) {
-    await this.clickSelectAction('Flag');
-    const modal = this.page.getByTestId('emoji-autocomplete-modal');
-    await modal.waitFor({ state: 'visible' });
-    const input = modal.getByRole('textbox');
-    await input.pressSequentially(shortcode);
-    await input.press('Enter');
-    await modal.waitFor({ state: 'hidden' });
-  }
-
-  /**
-   * Bulk-clear the flag on the currently selected transactions.
-   */
-  async bulkClearFlag() {
-    await this.clickSelectAction('Flag');
-    const modal = this.page.getByTestId('emoji-autocomplete-modal');
-    await modal.waitFor({ state: 'visible' });
-    await modal.getByRole('button', { name: 'Remove' }).click();
-    await modal.waitFor({ state: 'hidden' });
-  }
-
-  async setTransactionFlag(index: number, shortcode: string) {
-    const flagCell = this.transactionTableRow.nth(index).getByTestId('flag');
-    await flagCell.click();
-    const popover = this.page.getByTestId('emoji-select-popover');
-    await popover.waitFor({ state: 'visible', timeout: 2000 });
-    const flagInput = flagCell.getByRole('textbox');
-    await this.selectInputText(flagInput);
-    await flagInput.pressSequentially(shortcode);
-    await selectFlagFromPopover(popover, shortcode);
-    await flagInput.press('Enter');
   }
 
   /**
@@ -255,35 +194,6 @@ export class AccountPage {
   async filterByNote(note: string) {
     const filterTooltip = await this.filterBy('Note');
     await this.page.keyboard.type(note);
-    await filterTooltip.applyButton.click();
-  }
-
-  /**
-   * Filter transactions by flag with the given operator and optional value.
-   * @param op - 'is' | 'isNot' | 'isSet' | 'isNotSet'
-   * @param value - Flag shortcode (e.g. ':large_blue_circle:') required for 'is'/'isNot'
-   */
-  async filterByFlag(
-    op: 'is' | 'isNot' | 'isSet' | 'isNotSet',
-    value?: string,
-  ) {
-    const filterTooltip = await this.filterBy('Flag');
-
-    if (op !== 'is') {
-      const opLabels: Record<string, string> = {
-        isNot: 'is not',
-        isSet: 'set',
-        isNotSet: 'not set',
-      };
-      await filterTooltip.locator
-        .getByText(opLabels[op], { exact: true })
-        .click();
-    }
-
-    if (value && (op === 'is' || op === 'isNot')) {
-      await this.page.keyboard.type(value);
-    }
-
     await filterTooltip.applyButton.click();
   }
 
@@ -359,28 +269,6 @@ export class AccountPage {
         await this.page.keyboard.press('Tab');
       }
     }
-
-    if (transaction.flag) {
-      const flagCell = transactionRow.getByTestId('flag');
-      await flagCell.click();
-      const popover = this.page.getByTestId('emoji-select-popover');
-      await popover.waitFor({ state: 'visible', timeout: 2000 });
-      const flagInput = flagCell.getByRole('textbox');
-      await this.selectInputText(flagInput);
-      await flagInput.pressSequentially(transaction.flag);
-      await selectFlagFromPopover(popover, transaction.flag);
-      const inputValue = await flagInput.inputValue();
-      expect(inputValue).not.toBe('');
-      expect(inputValue).not.toContain(':');
-      // Verify the input contains an emoji (non-ASCII character)
-      expect(
-        Array.from(inputValue).some(char => (char.codePointAt(0) ?? 0) > 127),
-      ).toBe(true);
-      await expect(popover).not.toBeVisible();
-      const flagCellText = await flagCell.textContent();
-      expect(flagCellText).not.toBeNull();
-      expect(flagCellText).not.toContain(':');
-    }
   }
 
   async selectInputText(input: Locator) {
@@ -388,6 +276,10 @@ export class AccountPage {
     if (value) {
       await input.selectText();
     }
+  }
+
+  async rightClickNthTransaction(index: number) {
+    await this.transactionTableRow.nth(index).click({ button: 'right' });
   }
 }
 

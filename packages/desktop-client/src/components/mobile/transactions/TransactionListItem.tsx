@@ -21,7 +21,6 @@ import { Text } from '@actual-app/components/text';
 import { TextOneLine } from '@actual-app/components/text-one-line';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import { shortcodeToNative } from '@actual-app/core/shared/emoji';
 import { isPreviewId } from '@actual-app/core/shared/transactions';
 import { integerToCurrency } from '@actual-app/core/shared/util';
 import type { IntegerAmount } from '@actual-app/core/shared/util';
@@ -74,15 +73,19 @@ type TransactionListItemProps = ListBoxItemRenderProps & {
   transaction?: TransactionEntity;
   showRunningBalance?: boolean;
   runningBalance?: IntegerAmount;
+  isReconciling?: boolean;
   onPress: (transaction: TransactionEntity) => void;
   onLongPress: (transaction: TransactionEntity) => void;
+  onToggleCleared?: (transaction: TransactionEntity) => void;
 };
 
 export function TransactionListItem({
   showRunningBalance,
   runningBalance,
+  isReconciling = false,
   onPress,
   onLongPress,
+  onToggleCleared,
   transaction,
   ...itemProps
 }: TransactionListItemProps) {
@@ -149,107 +152,119 @@ export function TransactionListItem({
   const prettyCategory = specialCategory || categoryName;
   const textStyle = getTextStyle({ isPreview });
   const nativeParentFlag = shortcodeToNative(flag || null);
-  const nativeChildFlags =
-    transaction.subtransactions
-      ?.map(t => shortcodeToNative(t.flag || null))
-      .filter(Boolean) ?? [];
-  const nativeFlags = [
-    ...(nativeParentFlag ? [{ emoji: nativeParentFlag, isChild: false }] : []),
-    ...nativeChildFlags.map(emoji => ({ emoji, isChild: true })),
-  ];
+  const nativeChildFlags = transaction.subtransactions?.map(t => shortcodeToNative(t.flag || null)).filter(Boolean) ?? [];
+  const nativeFlags = [...(nativeParentFlag ? [{ emoji: nativeParentFlag, isChild: false }] : []), ...nativeChildFlags.map(emoji => ({ emoji, isChild: true }))];
 
   return (
-    <PressResponder {...mergeProps(pressProps, longPressProps)}>
-      <Button
-        {...itemProps}
-        style={{
-          userSelect: 'none',
-          height: ROW_HEIGHT,
-          width: '100%',
-          borderRadius: 0,
-          ...(itemProps.isSelected
-            ? {
-                borderWidth: '0 0 0 4px',
-                borderColor: theme.mobileTransactionSelected,
-                borderStyle: 'solid',
-              }
-            : {
-                borderWidth: '0 0 1px 0',
-                borderColor: theme.tableBorder,
-                borderStyle: 'solid',
-              }),
-          ...(isPreview
-            ? {
-                backgroundColor: theme.tableRowHeaderBackground,
-              }
-            : {
-                backgroundColor: theme.tableBackground,
-              }),
-        }}
-      >
-        <View
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'stretch',
+        width: '100%',
+        height: ROW_HEIGHT,
+        overflow: 'hidden',
+        ...(itemProps.isSelected
+          ? {
+              borderWidth: '0 0 0 4px',
+              borderColor: theme.mobileTransactionSelected,
+              borderStyle: 'solid',
+            }
+          : {
+              borderWidth: '0 0 1px 0',
+              borderColor: theme.tableBorder,
+              borderStyle: 'solid',
+            }),
+        ...(isPreview
+          ? {
+              backgroundColor: theme.tableRowHeaderBackground,
+            }
+          : {
+              backgroundColor: theme.tableBackground,
+            }),
+      }}
+    >
+      <PressResponder {...mergeProps(pressProps, longPressProps)}>
+        <Button
+          {...itemProps}
           style={{
-            flexDirection: 'row',
+            userSelect: 'none',
+            height: '100%',
             flex: 1,
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 4px',
+            borderRadius: 0,
+            borderWidth: 0,
+            ...(isReconciling && { paddingRight: 0 }),
+            ...(isPreview
+              ? {
+                  backgroundColor: theme.tableRowHeaderBackground,
+                }
+              : {
+                  backgroundColor: theme.tableBackground,
+                }),
           }}
         >
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <PayeeIcons
-                transaction={transaction}
-                transferAccount={transferAccount}
-              />
-              <TextOneLine
-                style={{
-                  ...textStyle,
-                  fontWeight: isAdded ? '600' : '400',
-                  ...(!displayPayee && !isPreview
-                    ? {
-                        color: theme.pageTextLight,
-                        fontStyle: 'italic',
-                      }
-                    : {}),
-                }}
-              >
-                {displayPayee || t('(No payee)')}
-              </TextOneLine>
-            </View>
-            {isPreview ? (
-              <Status status={previewStatus} isSplit={isParent || isChild} />
-            ) : (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginTop: 3,
-                }}
-              >
-                {isReconciled ? (
-                  <SvgLockClosed
-                    style={{
-                      width: 11,
-                      height: 11,
-                      color: theme.noticeTextLight,
-                      marginRight: 5,
-                    }}
-                  />
-                ) : (
-                  <SvgCheckCircle1
-                    style={{
-                      width: 11,
-                      height: 11,
-                      color: isCleared
-                        ? theme.noticeTextLight
-                        : theme.pageTextSubdued,
-                      marginRight: 5,
-                    }}
-                  />
-                )}
-                {(isParent || isChild) && (
-                  <>
+          <View
+            style={{
+              flexDirection: 'row',
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: isReconciling ? '0 0 0 4px' : '0 4px',
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <PayeeIcons
+                  transaction={transaction}
+                  transferAccount={transferAccount}
+                />
+                <TextOneLine
+                  style={{
+                    ...textStyle,
+                    fontWeight: isAdded ? '600' : '400',
+                    ...(!displayPayee && !isPreview
+                      ? {
+                          color: theme.pageTextLight,
+                          fontStyle: 'italic',
+                        }
+                      : {}),
+                  }}
+                >
+                  {displayPayee || t('(No payee)')}
+                </TextOneLine>
+              </View>
+              {isPreview ? (
+                <Status status={previewStatus} isSplit={isParent || isChild} />
+              ) : (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginTop: 3,
+                  }}
+                >
+                  {!isReconciling &&
+                    (isReconciled ? (
+                      <SvgLockClosed
+                        style={{
+                          width: 11,
+                          height: 11,
+                          color: theme.noticeTextLight,
+                          marginRight: 5,
+                        }}
+                      />
+                    ) : (
+                      <SvgCheckCircle1
+                        style={{
+                          width: 11,
+                          height: 11,
+                          color: isCleared
+                            ? theme.noticeTextLight
+                            : theme.pageTextSubdued,
+                          marginRight: 5,
+                        }}
+                      />
+                    ))}
+                  {(isParent || isChild) && (
                     <SvgSplit
                       style={{
                         width: 12,
@@ -257,46 +272,7 @@ export function TransactionListItem({
                         marginRight: 5,
                       }}
                     />
-                    <TextOneLine
-                      style={{
-                        fontSize: 11,
-                        marginTop: 1,
-                        marginRight: nativeFlags.length > 0 ? 5 : 0,
-                        fontWeight: '400',
-                        color: theme.tableText,
-                        fontStyle: 'italic',
-                        textAlign: 'left',
-                      }}
-                    >
-                      {prettyCategory}
-                    </TextOneLine>
-                  </>
-                )}
-                {nativeFlags.length > 0 && (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      marginRight: 5,
-                    }}
-                  >
-                    {nativeFlags.map(({ emoji, isChild }, index) => (
-                      <Text
-                        key={`${emoji}-${index}`}
-                        style={{
-                          fontSize: 12,
-                          lineHeight: '12px',
-                          marginRight: index === nativeFlags.length - 1 ? 0 : 6,
-                          color: isChild ? theme.pageTextSubdued : undefined,
-                          opacity: isChild ? 0.7 : undefined,
-                        }}
-                      >
-                        {emoji}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-                {!isParent && !isChild && (
+                  )}
                   <TextOneLine
                     style={{
                       fontSize: 11,
@@ -314,58 +290,131 @@ export function TransactionListItem({
                   >
                     {prettyCategory || t('Uncategorized')}
                   </TextOneLine>
-                )}
-              </View>
-            )}
-            {notes && (
-              <TextOneLine
-                style={{
-                  fontSize: 11,
-                  marginTop: 4,
-                  fontWeight: '400',
-                  color: theme.tableText,
-                  textAlign: 'left',
-                  opacity: 0.85,
-                }}
-              >
-                <NotesTagFormatter notes={notes} />
-              </TextOneLine>
-            )}
-          </View>
-          <View style={{ justifyContent: 'center', alignItems: 'flex-end' }}>
-            <Text
-              style={{
-                ...styles.tnum,
-                ...makeAmountFullStyle(amount, {
-                  positiveColor: theme.tableText,
-                  negativeColor: theme.tableText,
-                  zeroColor: theme.numberNeutral,
-                }),
-                ...textStyle,
-              }}
-            >
-              {integerToCurrency(amount)}
-            </Text>
-            {showRunningBalance && runningBalance !== undefined && (
+                  {nativeFlags.map(({ emoji, isChild }, index) => (
+                    <Text key={`${emoji}-${index}`} style={{ fontSize: 12, lineHeight: '12px', marginLeft: 5, color: isChild ? theme.pageTextSubdued : undefined, opacity: isChild ? 0.7 : undefined }}>
+                      {emoji}
+                    </Text>
+                  ))}
+                </View>
+              )}
+              {notes && (
+                <TextOneLine
+                  style={{
+                    fontSize: 11,
+                    marginTop: 4,
+                    fontWeight: '400',
+                    color: theme.tableText,
+                    textAlign: 'left',
+                    opacity: 0.85,
+                  }}
+                >
+                  <NotesTagFormatter notes={notes} />
+                </TextOneLine>
+              )}
+            </View>
+            <View style={{ justifyContent: 'center', alignItems: 'flex-end' }}>
               <Text
                 style={{
-                  fontSize: 11,
-                  fontWeight: '400',
                   ...styles.tnum,
-                  ...makeAmountFullStyle(runningBalance, {
-                    positiveColor: theme.numberPositive,
-                    negativeColor: theme.numberNegative,
+                  ...makeAmountFullStyle(amount, {
+                    positiveColor: theme.tableText,
+                    negativeColor: theme.tableText,
                     zeroColor: theme.numberNeutral,
                   }),
+                  ...textStyle,
                 }}
               >
-                {integerToCurrency(runningBalance)}
+                {integerToCurrency(amount)}
               </Text>
-            )}
+              {showRunningBalance && runningBalance !== undefined && (
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '400',
+                    ...styles.tnum,
+                    ...makeAmountFullStyle(runningBalance, {
+                      positiveColor: theme.numberPositive,
+                      negativeColor: theme.numberNegative,
+                      zeroColor: theme.numberNeutral,
+                    }),
+                  }}
+                >
+                  {integerToCurrency(runningBalance)}
+                </Text>
+              )}
+            </View>
           </View>
-        </View>
-      </Button>
-    </PressResponder>
+        </Button>
+      </PressResponder>
+      {isReconciling &&
+        !isPreview &&
+        (isChild ? (
+          <View
+            style={{
+              width: 32,
+              flexShrink: 0,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <ClearedStatusIcon
+              isReconciled={isReconciled}
+              isCleared={isCleared}
+            />
+          </View>
+        ) : (
+          <Button
+            variant="bare"
+            aria-label={
+              isReconciled
+                ? t('Unlock reconciled transaction')
+                : isCleared
+                  ? t('Unclear transaction')
+                  : t('Clear transaction')
+            }
+            style={{
+              width: 32,
+              height: '100%',
+              flexShrink: 0,
+              borderRadius: 0,
+            }}
+            onPress={() => onToggleCleared?.(transaction)}
+          >
+            <ClearedStatusIcon
+              isReconciled={isReconciled}
+              isCleared={isCleared}
+            />
+          </Button>
+        ))}
+    </View>
+  );
+}
+
+type ClearedStatusIconProps = {
+  isReconciled?: boolean;
+  isCleared?: boolean;
+};
+
+function ClearedStatusIcon({
+  isReconciled,
+  isCleared,
+}: ClearedStatusIconProps) {
+  return isReconciled ? (
+    <SvgLockClosed
+      style={{
+        width: 13,
+        height: 13,
+        color: theme.noticeTextLight,
+      }}
+    />
+  ) : (
+    <SvgCheckCircle1
+      style={{
+        width: 13,
+        height: 13,
+        color: isCleared ? theme.noticeTextLight : theme.pageTextSubdued,
+      }}
+    />
   );
 }
 

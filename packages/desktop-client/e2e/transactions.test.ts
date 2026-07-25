@@ -309,7 +309,11 @@ test.describe('Transactions', () => {
             hasText: 'Split Child Flagged',
           }),
         ).not.toHaveCount(0);
-        await expect(accountPage.getNthTransaction(1).flag).toContainText('🟠');
+        await expect(
+          accountPage.transactionTable
+            .getByTestId('flag')
+            .filter({ hasText: '🟠' }),
+        ).toHaveCount(1);
       });
     });
   });

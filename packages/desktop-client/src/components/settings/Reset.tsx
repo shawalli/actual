@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { Trans } from 'react-i18next';
 
 import { ButtonWithLoading } from '@actual-app/components/button';
+import { Paragraph } from '@actual-app/components/paragraph';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
+import { View } from '@actual-app/components/view';
 import { send } from '@actual-app/core/platform/client/connection';
 
 import { resetSync } from '#app/appSlice';
+import { useLocalPref } from '#hooks/useLocalPref';
 import { useMetadataPref } from '#hooks/useMetadataPref';
 import { useDispatch } from '#redux';
 
@@ -84,6 +88,56 @@ export function ResetSync() {
           </Trans>
         </Text>
       )}
+    </Setting>
+  );
+}
+
+export function ResetTransactionColumnWidths() {
+  const [, , removeColumnWidths] = useLocalPref('transactions.columnWidths');
+  const [isResetting, setIsResetting] = useState(false);
+  const [hasReset, setHasReset] = useState(false);
+
+  async function onResetColumnWidths() {
+    setIsResetting(true);
+    setHasReset(false);
+
+    removeColumnWidths();
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    setHasReset(true);
+    setIsResetting(false);
+  }
+
+  return (
+    <Setting
+      primaryAction={
+        <View
+          style={{
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '1em',
+          }}
+        >
+          <ButtonWithLoading
+            isLoading={isResetting}
+            onPress={onResetColumnWidths}
+          >
+            <Trans>Reset columns</Trans>
+          </ButtonWithLoading>
+          {hasReset && (
+            <Paragraph style={{ color: theme.noticeTextLight }}>
+              <Trans>Transaction column widths reset.</Trans>
+            </Paragraph>
+          )}
+        </View>
+      }
+    >
+      <Text>
+        <Trans>
+          <strong>Reset columns</strong> restores the default transaction column
+          widths.
+        </Trans>
+      </Text>
     </Setting>
   );
 }

@@ -43,6 +43,7 @@ import { tagQueries } from '#tags/queries';
 import { TransactionTable } from './TransactionsTable';
 
 const recentFlagsStorageKey = 'undefined-transactions.recentFlags';
+const columnWidthsStorageKey = 'undefined-transactions.columnWidths';
 
 const queryClient = createTestQueryClient();
 
@@ -203,6 +204,7 @@ type LiveTransactionTableProps = {
   isAdding: boolean;
   onTransactionsChange?: (newTrans: TransactionEntity[]) => void;
   onCloseAddTransaction?: () => void;
+  onSort?: (field: string, ascDesc: 'asc' | 'desc') => void;
 };
 
 function LiveTransactionTable(props: LiveTransactionTableProps) {
@@ -278,6 +280,9 @@ function LiveTransactionTable(props: LiveTransactionTableProps) {
                   onAdd={onAdd}
                   onAddSplit={onAddSplit}
                   onCreatePayee={onCreatePayee}
+                  onSort={props.onSort ?? vi.fn()}
+                  sortField=""
+                  ascDesc="asc"
                   showSelection
                   allowSplitTransaction
                 />
@@ -328,6 +333,7 @@ function initBasicServer() {
 beforeEach(() => {
   schedules = [];
   localStorage.removeItem(recentFlagsStorageKey);
+  localStorage.removeItem(columnWidthsStorageKey);
   initBasicServer();
 });
 
@@ -515,6 +521,68 @@ function expectToBeEditingField(
 }
 
 describe('Transactions', () => {
+  test('persists a resized column and resets it on divider double-click', () => {
+    const onSort = vi.fn();
+    renderTransactions({ onSort });
+
+    const divider = screen.getByTestId('resize-date');
+    fireEvent.pointerDown(divider, { button: 0, clientX: 10 });
+    fireEvent.pointerMove(window, { clientX: 100 });
+    fireEvent.pointerUp(window);
+
+    expect(
+      JSON.parse(localStorage.getItem(columnWidthsStorageKey) ?? '{}'),
+    ).toEqual({ date: 80, account: 100 });
+    expect(screen.getAllByTestId('date')[0]).toHaveStyle({ width: '80px' });
+    expect(screen.getAllByTestId('date')[1]).toHaveStyle({ width: '80px' });
+    expect(onSort).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByTestId('date')[0].querySelector('button')!);
+    expect(onSort).toHaveBeenCalledWith('date', 'desc');
+
+    fireEvent.doubleClick(divider);
+
+    expect(
+      JSON.parse(localStorage.getItem(columnWidthsStorageKey) ?? '{}'),
+    ).toEqual({});
+  });
+
+  test('keeps resized columns aligned when optional columns are hidden and adding', () => {
+    renderTransactions({ isAdding: true, showAccount: false });
+
+    expect(screen.queryByTestId('resize-account')).not.toBeInTheDocument();
+
+    const divider = screen.getByTestId('resize-date');
+    fireEvent.pointerDown(divider, { button: 0, clientX: 10 });
+    fireEvent.pointerMove(window, { clientX: 100 });
+    fireEvent.pointerUp(window);
+
+    for (const dateCell of screen.getAllByTestId('date')) {
+      expect(dateCell).toHaveStyle({ width: '80px' });
+    }
+  });
+
+  test('uses the trailing data column to fill space when every visible column is fixed', () => {
+    localStorage.setItem(
+      columnWidthsStorageKey,
+      JSON.stringify({
+        date: 110,
+        account: 180,
+        payee: 180,
+        notes: 180,
+        category: 180,
+        debit: 100,
+        credit: 100,
+      }),
+    );
+
+    renderTransactions();
+
+    expect(screen.getByTestId('deposit')).toHaveStyle({
+      flex: '1 1 0px',
+    });
+  });
+
   test('preview transactions show schedule name in notes', async () => {
     const scheduleName = 'Monthly rent';
     schedules = [
@@ -679,6 +747,23 @@ describe('Transactions', () => {
       expect(getTransactions()[0].flag).toBe('');
       expect(getTransactions()[1].flag).toBe(':grinning:');
     });
+  });
+
+  test('split child rows do not render an extra selection column', () => {
+    const [parent, child] = generateTransaction(
+      { account: accounts[0].id, amount: 5000 },
+      3000,
+    );
+    const { container } = renderTransactions({
+      transactions: [parent, child],
+    });
+
+    const rows = container.querySelectorAll(
+      '[data-testid="transaction-table"] [data-testid="row"]',
+    );
+    const childRow = rows[1];
+
+    expect(childRow.querySelector('[data-testid="select"]')).toBeNull();
   });
 
   test('seeds recent flags from loaded transactions when storage is missing', async () => {

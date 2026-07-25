@@ -92,6 +92,7 @@ export type LocalPrefs = Partial<{
   'budget.startMonth': string;
   'flags.updateNotificationShownForVersion': string;
   'transactions.recentFlags': string[];
+  'transactions.columnWidths': Partial<Record<string, number>>;
   'schedules.showCompleted': boolean;
   reportsViewLegend: boolean;
   reportsViewSummary: boolean;

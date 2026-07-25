@@ -111,6 +111,7 @@ test.describe('Transaction column resizing', () => {
 
       const accountPage = await navigation.goToAccountPage('Ally Savings');
       await accountPage.waitFor({ state: 'visible' });
+      await resizeColumn(page, 'date', 1);
       await setStoredColumnWidths(page, {
         payee: 198,
         notes: 425,
@@ -125,19 +126,26 @@ test.describe('Transaction column resizing', () => {
       await page.setViewportSize({ width: 1057, height: 861 });
       await expect
         .poll(() => getColumnWidth(page, 'deposit'))
-        .toBeGreaterThanOrEqual(90);
+        .toBeLessThanOrEqual(110);
+      const narrowDepositWidth = await getColumnWidth(page, 'deposit');
+      expect(narrowDepositWidth).toBeGreaterThanOrEqual(90);
 
       await page.setViewportSize(desktopViewport);
+      await page.waitForTimeout(250);
+      const initialDepositWidth = await getColumnWidth(page, 'deposit');
+      expect(initialDepositWidth).toBeGreaterThanOrEqual(90);
+      await resizeColumn(page, 'debit', -40);
+
       await expect
         .poll(() => getColumnWidth(page, 'deposit'))
-        .toBeGreaterThan(90);
+        .toBeGreaterThan(initialDepositWidth);
+      const expandedDepositWidth = await getColumnWidth(page, 'deposit');
 
-      const depositWidth = await getColumnWidth(page, 'deposit');
       await resizeColumn(page, 'debit', 20);
 
       await expect
         .poll(() => getColumnWidth(page, 'deposit'))
-        .toBeLessThan(depositWidth);
+        .toBeLessThan(expandedDepositWidth);
       await expect
         .poll(() => getColumnWidth(page, 'deposit'))
         .toBeGreaterThanOrEqual(90);

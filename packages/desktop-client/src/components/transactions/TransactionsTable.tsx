@@ -1568,91 +1568,80 @@ const Transaction = memo(function Transaction({
     dropPos && isValidDropTarget && !isBeingDragged,
   );
 
-  const flagCell =
-    isChild && isTemporaryId(transaction.id) ? (
-      <DeleteCell
-        onDelete={() => onDelete && onDelete(transaction.id)}
-        exposed={editing}
-        style={{
-          width: 45,
-          border: 0,
-          lineHeight: 0,
-        }}
-      />
-    ) : (
-      <CustomCell
-        name="flag"
-        width={45}
-        textAlign="center"
-        exposed={focusedField === 'flag'}
-        value={transaction.flag || undefined}
-        valueStyle={{
-          fontSize: transaction.flag ? '18px' : '14px',
-          color: transaction.flag ? theme.tableText : theme.tableTextSubdued,
-          opacity: transaction.flag ? 1 : 0.5,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-        style={
-          isChild
-            ? {
-                width: 45,
-                backgroundColor: theme.tableRowBackgroundHover,
-                border: 0, // known z-order issue, bottom border for parent transaction hidden
-              }
-            : undefined
-        }
-        onExpose={name => !isPreview && onEdit(id, name)}
-        onUpdate={value => {
-          onUpdate('flag', value);
-        }}
-        formatter={value => {
-          return shortcodeToNative(value);
-        }}
-        unexposedContent={({ value, formatter }) => {
-          const displayValue = value && formatter ? formatter(value) : null;
-          return (
-            <View
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                width: '100%',
-                height: '100%',
-              }}
-            >
-              {displayValue ? (
-                <span style={{ fontSize: '18px' }}>{displayValue}</span>
-              ) : (
-                <SvgFlag
-                  style={{
-                    width: 14,
-                    height: 14,
-                    color: theme.tableTextSubdued,
-                    opacity: 1,
-                  }}
-                />
-              )}
-            </View>
-          );
-        }}
-      >
-        {({ onBlur, onKeyDown, onSave, shouldSaveFromKey, inputStyle }) => (
-          <EmojiSelect
-            value={transaction.flag || null}
-            isOpen={focusedField === 'flag'}
-            shouldSaveFromKey={shouldSaveFromKey}
-            recentFlags={recentFlags}
-            recentFlagsLimit={DESKTOP_RECENT_FLAGS_LIMIT}
-            inputProps={{ onBlur, onKeyDown, style: inputStyle }}
-            onSelect={value => {
-              onSave(value ?? '');
-              onRecordRecentFlag(value);
+  const flagCell = (
+    <CustomCell
+      name="flag"
+      width={45}
+      textAlign="center"
+      exposed={focusedField === 'flag'}
+      value={transaction.flag || undefined}
+      valueStyle={{
+        fontSize: transaction.flag ? '18px' : '14px',
+        color: transaction.flag ? theme.tableText : theme.tableTextSubdued,
+        opacity: transaction.flag ? 1 : 0.5,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+      style={
+        isChild
+          ? {
+              width: 45,
+              backgroundColor: theme.tableRowBackgroundHover,
+              border: 0, // known z-order issue, bottom border for parent transaction hidden
+            }
+          : undefined
+      }
+      onExpose={name => !isPreview && onEdit(id, name)}
+      onUpdate={value => {
+        onUpdate('flag', value);
+      }}
+      formatter={value => {
+        return shortcodeToNative(value);
+      }}
+      unexposedContent={({ value, formatter }) => {
+        const displayValue = value && formatter ? formatter(value) : null;
+        return (
+          <View
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: '100%',
+              height: '100%',
             }}
-          />
-        )}
-      </CustomCell>
-    );
+          >
+            {displayValue ? (
+              <span style={{ fontSize: '18px' }}>{displayValue}</span>
+            ) : (
+              <SvgFlag
+                style={{
+                  width: 14,
+                  height: 14,
+                  color: theme.tableTextSubdued,
+                  opacity: 1,
+                }}
+              />
+            )}
+          </View>
+        );
+      }}
+    >
+      {({ onBlur, onKeyDown, onSave, shouldSaveFromKey, inputStyle }) => (
+        <EmojiSelect
+          value={transaction.flag || null}
+          isOpen={focusedField === 'flag'}
+          shouldSaveFromKey={shouldSaveFromKey}
+          recentFlags={recentFlags}
+          recentFlagsLimit={DESKTOP_RECENT_FLAGS_LIMIT}
+          inputProps={{ onBlur, onKeyDown, style: inputStyle }}
+          onSelect={value => {
+            onSave(value ?? '');
+            onRecordRecentFlag(value);
+          }}
+        />
+      )}
+    </CustomCell>
+  );
 
   return (
     <View
@@ -1774,8 +1763,17 @@ const Transaction = memo(function Transaction({
 
         {/* Checkmark - for Child transaction
       between normal Date and Payee or Account and Payee if needed */}
-        {!isChild &&
-          (isTemporaryId(transaction.id) ? (
+        {isChild && isTemporaryId(transaction.id) ? (
+          <DeleteCell
+            onDelete={() => onDelete && onDelete(transaction.id)}
+            exposed={editing}
+            style={{
+              borderLeftWidth: 1,
+              lineHeight: 0,
+            }}
+          />
+        ) : !isChild ? (
+          isTemporaryId(transaction.id) ? (
             <Cell width={20} />
           ) : !showSelection ? (
             <Cell width={20} />
@@ -1807,7 +1805,8 @@ const Transaction = memo(function Transaction({
                   : undefined
               }
             />
-          ))}
+          )
+        ) : null}
         {!isChild && (
           <CustomCell
             /* Date field for non-child transaction */

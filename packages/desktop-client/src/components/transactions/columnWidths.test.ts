@@ -96,6 +96,59 @@ describe('transaction column widths', () => {
     ).toEqual({ notes: 200, category: 200 });
   });
 
+  it('scales a fully saved layout proportionally to fill a wider viewport', () => {
+    expect(
+      fitTransactionColumnWidths({
+        widths: { date: 110, payee: 200, notes: 200 },
+        visibleColumns: ['date', 'payee', 'notes'],
+        availableWidth: 1000,
+        fixedWidth: 70,
+      }),
+    ).toEqual({ date: 200, payee: 364, notes: 366 });
+  });
+
+  it('leaves saved widths unchanged when flexible columns can fill the viewport', () => {
+    expect(
+      fitTransactionColumnWidths({
+        widths: { date: 110 },
+        visibleColumns: ['date', 'payee', 'notes'],
+        availableWidth: 1000,
+        fixedWidth: 70,
+      }),
+    ).toEqual({ date: 110 });
+  });
+
+  it('does not treat an unsaved fixed default as a flexible column', () => {
+    expect(
+      fitTransactionColumnWidths({
+        widths: {
+          payee: 198,
+          notes: 425,
+          category: 172,
+          debit: 100,
+          credit: 90,
+        },
+        visibleColumns: [
+          'date',
+          'payee',
+          'notes',
+          'category',
+          'debit',
+          'credit',
+        ],
+        availableWidth: 906,
+        fixedWidth: 70,
+      }),
+    ).toEqual({
+      date: 93,
+      payee: 155,
+      notes: 258,
+      category: 143,
+      debit: 94,
+      credit: 93,
+    });
+  });
+
   it('uses the trailing data column to fill remaining space when needed', () => {
     expect(
       fillTrailingTransactionColumn({

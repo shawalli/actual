@@ -30,6 +30,21 @@ async function resizeColumn(page: Page, column: string, delta: number) {
   await page.mouse.up();
 }
 
+async function setStoredColumnWidths(
+  page: Page,
+  widths: Record<string, number>,
+) {
+  await page.evaluate(widths => {
+    const key = Object.keys(localStorage).find(key =>
+      key.endsWith('transactions.columnWidths'),
+    );
+    if (!key) {
+      throw new Error('Transaction column widths preference was not found');
+    }
+    localStorage.setItem(key, JSON.stringify(widths));
+  }, widths);
+}
+
 test.describe('Transaction column resizing', () => {
   test.use({ viewport: desktopViewport });
 
@@ -78,6 +93,54 @@ test.describe('Transaction column resizing', () => {
       await expect
         .poll(() => getColumnWidth(page, 'date'))
         .toBeCloseTo(initialDateWidth, 0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  test('keeps payment and deposit resizable after a narrow-to-wide viewport change', async ({
+    browser,
+  }) => {
+    const page = await browser.newPage({ viewport: desktopViewport });
+    const navigation = new Navigation(page);
+    const configurationPage = new ConfigurationPage(page);
+
+    try {
+      await page.goto('/');
+      await configurationPage.createTestFile();
+
+      const accountPage = await navigation.goToAccountPage('Ally Savings');
+      await accountPage.waitFor({ state: 'visible' });
+      await setStoredColumnWidths(page, {
+        payee: 198,
+        notes: 425,
+        category: 172,
+        debit: 100,
+        credit: 90,
+      });
+
+      await page.reload();
+      await accountPage.waitFor({ state: 'visible' });
+
+      await page.setViewportSize({ width: 1057, height: 861 });
+      await expect
+        .poll(() => getColumnWidth(page, 'deposit'))
+        .toBeGreaterThanOrEqual(90);
+
+      await page.setViewportSize(desktopViewport);
+      await expect
+        .poll(() => getColumnWidth(page, 'deposit'))
+        .toBeGreaterThan(90);
+
+      const depositWidth = await getColumnWidth(page, 'deposit');
+      await resizeColumn(page, 'debit', 20);
+
+      await expect
+        .poll(() => getColumnWidth(page, 'deposit'))
+        .toBeLessThan(depositWidth);
+      await expect
+        .poll(() => getColumnWidth(page, 'deposit'))
+        .toBeGreaterThanOrEqual(90);
     } finally {
       await page.close();
     }

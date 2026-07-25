@@ -163,10 +163,10 @@ export function fitTransactionColumnWidths({
   if (availableWidth <= 0) return widths;
 
   const numericColumns = visibleColumns.filter(
-    column => typeof widths[column] === 'number',
+    column => typeof getTransactionColumnWidth(column, widths) === 'number',
   );
   const flexibleMinimumWidth = visibleColumns
-    .filter(column => typeof widths[column] !== 'number')
+    .filter(column => getTransactionColumnWidth(column, widths) === 'flex')
     .reduce((total, column) => total + minimumWidths[column], 0);
   const totalMinimumWidth = numericColumns.reduce(
     (total, column) => total + minimumWidths[column],
@@ -177,11 +177,41 @@ export function fitTransactionColumnWidths({
     availableWidth - fixedWidth - flexibleMinimumWidth,
   );
   const currentNumericWidth = numericColumns.reduce(
-    (total, column) => total + Math.max(widths[column]!, minimumWidths[column]),
+    (total, column) =>
+      total +
+      Math.max(
+        getTransactionColumnWidth(column, widths) as number,
+        minimumWidths[column],
+      ),
     0,
   );
 
-  if (targetNumericWidth >= currentNumericWidth) return widths;
+  if (targetNumericWidth >= currentNumericWidth) {
+    // When every visible data column resolves to a fixed width, preserve those
+    // proportions as the viewport grows instead of making only the trailing
+    // column absorb the extra space.
+    if (numericColumns.length !== visibleColumns.length) return widths;
+
+    const result = { ...widths };
+    let remainingWidth = targetNumericWidth;
+
+    for (const [index, column] of numericColumns.entries()) {
+      const currentWidth = Math.max(
+        getTransactionColumnWidth(column, widths) as number,
+        minimumWidths[column],
+      );
+      const width =
+        index === numericColumns.length - 1
+          ? remainingWidth
+          : Math.floor(
+              currentWidth * (targetNumericWidth / currentNumericWidth),
+            );
+      result[column] = width;
+      remainingWidth -= width;
+    }
+
+    return result;
+  }
 
   const currentExtraWidth = currentNumericWidth - totalMinimumWidth;
   const targetExtraWidth = targetNumericWidth - totalMinimumWidth;
@@ -189,11 +219,14 @@ export function fitTransactionColumnWidths({
   let remainingWidth = targetNumericWidth;
 
   for (const [index, column] of numericColumns.entries()) {
-    const currentWidth = Math.max(widths[column]!, minimumWidths[column]);
+    const currentWidth = Math.max(
+      getTransactionColumnWidth(column, widths) as number,
+      minimumWidths[column],
+    );
     const width =
       index === numericColumns.length - 1
         ? remainingWidth
-        : Math.round(
+        : Math.floor(
             minimumWidths[column] +
               (currentWidth - minimumWidths[column]) *
                 (targetExtraWidth / currentExtraWidth),

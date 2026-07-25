@@ -101,10 +101,8 @@ export function ResetTransactionColumnWidths() {
     setIsResetting(true);
     setHasReset(false);
 
-    await Promise.all([
-      removeColumnWidths(),
-      new Promise(resolve => setTimeout(resolve, 300)),
-    ]);
+    removeColumnWidths();
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     setHasReset(true);
     setIsResetting(false);

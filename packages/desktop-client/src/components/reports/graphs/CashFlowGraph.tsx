@@ -191,6 +191,10 @@ export function CashFlowGraph({
           />
           <Tooltip
             labelFormatter={x => {
+              if (typeof x !== 'string' && typeof x !== 'number') {
+                return '';
+              }
+
               return d.format(x, isConcise ? "MMM ''yy" : 'MMM d', {
                 locale,
               });

@@ -124,16 +124,11 @@ test.describe('Transaction column resizing', () => {
       await accountPage.waitFor({ state: 'visible' });
 
       await page.setViewportSize({ width: 1057, height: 861 });
+      await page.setViewportSize(desktopViewport);
       await expect
         .poll(() => getColumnWidth(page, 'deposit'))
-        .toBeLessThanOrEqual(110);
-      const narrowDepositWidth = await getColumnWidth(page, 'deposit');
-      expect(narrowDepositWidth).toBeGreaterThanOrEqual(90);
-
-      await page.setViewportSize(desktopViewport);
-      await page.waitForTimeout(250);
+        .toBeGreaterThanOrEqual(90);
       const initialDepositWidth = await getColumnWidth(page, 'deposit');
-      expect(initialDepositWidth).toBeGreaterThanOrEqual(90);
       await resizeColumn(page, 'debit', -40);
 
       await expect

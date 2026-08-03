@@ -21,6 +21,7 @@ import { Text } from '@actual-app/components/text';
 import { TextOneLine } from '@actual-app/components/text-one-line';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+import { shortcodeToNative } from '@actual-app/core/shared/emoji';
 import { isPreviewId } from '@actual-app/core/shared/transactions';
 import { integerToCurrency } from '@actual-app/core/shared/util';
 import type { IntegerAmount } from '@actual-app/core/shared/util';
@@ -152,8 +153,14 @@ export function TransactionListItem({
   const prettyCategory = specialCategory || categoryName;
   const textStyle = getTextStyle({ isPreview });
   const nativeParentFlag = shortcodeToNative(flag || null);
-  const nativeChildFlags = transaction.subtransactions?.map(t => shortcodeToNative(t.flag || null)).filter(Boolean) ?? [];
-  const nativeFlags = [...(nativeParentFlag ? [{ emoji: nativeParentFlag, isChild: false }] : []), ...nativeChildFlags.map(emoji => ({ emoji, isChild: true }))];
+  const nativeChildFlags =
+    transaction.subtransactions
+      ?.map(t => shortcodeToNative(t.flag || null))
+      .filter(Boolean) ?? [];
+  const nativeFlags = [
+    ...(nativeParentFlag ? [{ emoji: nativeParentFlag, isChild: false }] : []),
+    ...nativeChildFlags.map(emoji => ({ emoji, isChild: true })),
+  ];
 
   return (
     <View
@@ -291,7 +298,16 @@ export function TransactionListItem({
                     {prettyCategory || t('Uncategorized')}
                   </TextOneLine>
                   {nativeFlags.map(({ emoji, isChild }, index) => (
-                    <Text key={`${emoji}-${index}`} style={{ fontSize: 12, lineHeight: '12px', marginLeft: 5, color: isChild ? theme.pageTextSubdued : undefined, opacity: isChild ? 0.7 : undefined }}>
+                    <Text
+                      key={`${emoji}-${index}`}
+                      style={{
+                        fontSize: 12,
+                        lineHeight: '12px',
+                        marginLeft: 5,
+                        color: isChild ? theme.pageTextSubdued : undefined,
+                        opacity: isChild ? 0.7 : undefined,
+                      }}
+                    >
                       {emoji}
                     </Text>
                   ))}

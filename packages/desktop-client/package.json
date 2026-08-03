@@ -209,5 +209,14 @@
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.1.10"
   },
-  "forkMetadata": { "dependencies": { "@emoji-mart/data": { "owner": "fork", "reason": "Fork flag emoji picker feature", "source": "fork/master", "upstreamTag": "v26.7.0" } } }
+  "forkMetadata": {
+    "dependencies": {
+      "@emoji-mart/data": {
+        "owner": "fork",
+        "reason": "Fork flag emoji picker feature",
+        "source": "fork/master",
+        "upstreamTag": "v26.7.0"
+      }
+    }
+  }
 }

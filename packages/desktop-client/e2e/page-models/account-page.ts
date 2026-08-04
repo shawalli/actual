@@ -184,6 +184,7 @@ export class AccountPage {
       category: row.getByTestId('category'),
       debit: row.getByTestId('debit'),
       credit: row.getByTestId('credit'),
+      balance: row.getByTestId('balance'),
       flag: row.getByTestId('flag'),
     };
   }
@@ -193,10 +194,6 @@ export class AccountPage {
     await this.selectTooltip.getByRole('button', { name: action }).click();
   }
 
-  /**
-   * Bulk-set a flag on the currently selected transactions.
-   * Shortcode format, e.g. ':large_blue_circle:'
-   */
   async bulkSetFlag(shortcode: string) {
     await this.clickSelectAction('Flag');
     const modal = this.page.getByTestId('emoji-autocomplete-modal');
@@ -207,9 +204,6 @@ export class AccountPage {
     await modal.waitFor({ state: 'hidden' });
   }
 
-  /**
-   * Bulk-clear the flag on the currently selected transactions.
-   */
   async bulkClearFlag() {
     await this.clickSelectAction('Flag');
     const modal = this.page.getByTestId('emoji-autocomplete-modal');
@@ -258,11 +252,6 @@ export class AccountPage {
     await filterTooltip.applyButton.click();
   }
 
-  /**
-   * Filter transactions by flag with the given operator and optional value.
-   * @param op - 'is' | 'isNot' | 'isSet' | 'isNotSet'
-   * @param value - Flag shortcode (e.g. ':large_blue_circle:') required for 'is'/'isNot'
-   */
   async filterByFlag(
     op: 'is' | 'isNot' | 'isSet' | 'isNotSet',
     value?: string,
@@ -372,7 +361,6 @@ export class AccountPage {
       const inputValue = await flagInput.inputValue();
       expect(inputValue).not.toBe('');
       expect(inputValue).not.toContain(':');
-      // Verify the input contains an emoji (non-ASCII character)
       expect(
         Array.from(inputValue).some(char => (char.codePointAt(0) ?? 0) > 127),
       ).toBe(true);
@@ -388,6 +376,10 @@ export class AccountPage {
     if (value) {
       await input.selectText();
     }
+  }
+
+  async rightClickNthTransaction(index: number) {
+    await this.transactionTableRow.nth(index).click({ button: 'right' });
   }
 }
 

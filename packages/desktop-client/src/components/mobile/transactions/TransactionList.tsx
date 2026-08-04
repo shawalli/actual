@@ -89,6 +89,8 @@ type TransactionListProps = {
   isLoadingMore: boolean;
   onLoadMore: () => void;
   showMakeTransfer?: boolean;
+  isReconciling?: boolean;
+  onToggleTransactionCleared?: (transaction: TransactionEntity) => void;
 };
 
 export function TransactionList({
@@ -100,6 +102,8 @@ export function TransactionList({
   isLoadingMore,
   onLoadMore,
   showMakeTransfer = false,
+  isReconciling = false,
+  onToggleTransactionCleared,
 }: TransactionListProps) {
   const locale = useLocale();
   const { t } = useTranslation();
@@ -185,6 +189,8 @@ export function TransactionList({
               onTransactionPress,
               runningBalances,
               showRunningBalances,
+              isReconciling,
+              onToggleTransactionCleared,
               t,
             ]}
             renderEmptyState={() =>
@@ -236,8 +242,10 @@ export function TransactionList({
                           showRunningBalance={showRunningBalances}
                           runningBalance={runningBalances?.get(transaction.id)}
                           transaction={transaction}
+                          isReconciling={isReconciling}
                           onPress={trans => onTransactionPress(trans)}
                           onLongPress={trans => onTransactionPress(trans, true)}
+                          onToggleCleared={onToggleTransactionCleared}
                         />
                       )}
                     </ListBoxItem>
@@ -555,8 +563,6 @@ function SelectedTransactionsFloatingActionBar({
               }}
               items={[
                 // Add support later on.
-                // Pikaday doesn't play well will mobile.
-                // We should consider switching to react-aria date picker.
                 // {
                 //   name: 'date',
                 //   text: 'Date',

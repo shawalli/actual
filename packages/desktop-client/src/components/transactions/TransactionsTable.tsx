@@ -113,7 +113,6 @@ import {
   SchedulesProvider,
   useCachedSchedules,
 } from '#hooks/useCachedSchedules';
-import { useContextMenu } from '#hooks/useContextMenu';
 import { DisplayPayeeProvider, useDisplayPayee } from '#hooks/useDisplayPayee';
 import {
   DropHighlight,
@@ -173,7 +172,7 @@ import type {
   TransactionEditFunction,
   TransactionUpdateFunction,
 } from './table/utils';
-import { TransactionMenu } from './TransactionMenu';
+import { useTransactionRowContextActions } from './useTransactionRowContextActions';
 
 type TransactionHeaderProps = {
   hasSelected: boolean;
@@ -1457,9 +1456,6 @@ const Transaction = memo(function Transaction({
     return () => clearTimeout(id);
   }, [splitError, allTransactions]);
 
-  const { setMenuOpen, menuOpen, handleContextMenu, position } =
-    useContextMenu();
-
   // Drag and drop support
   const isChildTransaction = transaction.is_child;
   const parentId = transaction.parent_id;
@@ -1567,6 +1563,19 @@ const Transaction = memo(function Transaction({
   const showDropHighlight = Boolean(
     dropPos && isValidDropTarget && !isBeingDragged,
   );
+
+  useTransactionRowContextActions({
+    rowRef: triggerRef,
+    transaction,
+    getTransaction: id => allTransactions?.find(t => t.id === id),
+    onDelete: ids => onBatchDelete?.(ids),
+    onDuplicate: ids => onBatchDuplicate?.(ids),
+    onLinkSchedule: ids => onBatchLinkSchedule?.(ids),
+    onUnlinkSchedule: ids => onBatchUnlinkSchedule?.(ids),
+    onCreateRule: ids => onCreateRule?.(ids),
+    onScheduleAction: (name, ids) => onScheduleAction?.(name, ids),
+    onMakeAsNonSplitTransactions: ids => onMakeAsNonSplitTransactions?.(ids),
+  });
 
   const flagCell = (
     <CustomCell
@@ -1683,35 +1692,7 @@ const Transaction = memo(function Transaction({
           ...(_unmatched && { opacity: 0.5 }),
           ...(isBeingDragged && { opacity: 0.5 }),
         }}
-        onContextMenu={handleContextMenu}
       >
-        <Popover
-          triggerRef={triggerRef}
-          placement="bottom start"
-          isOpen={menuOpen}
-          onOpenChange={isOpen => {
-            if (!isOpen) setMenuOpen(false);
-          }}
-          {...position}
-          style={{ width: 200, margin: 1 }}
-          isNonModal={false}
-        >
-          <TransactionMenu
-            transaction={transaction}
-            getTransaction={id => allTransactions?.find(t => t.id === id)}
-            onDelete={ids => onBatchDelete?.(ids)}
-            onDuplicate={ids => onBatchDuplicate?.(ids)}
-            onLinkSchedule={ids => onBatchLinkSchedule?.(ids)}
-            onUnlinkSchedule={ids => onBatchUnlinkSchedule?.(ids)}
-            onCreateRule={ids => onCreateRule?.(ids)}
-            onScheduleAction={(name, ids) => onScheduleAction?.(name, ids)}
-            onMakeAsNonSplitTransactions={ids =>
-              onMakeAsNonSplitTransactions?.(ids)
-            }
-            closeMenu={() => setMenuOpen(false)}
-          />
-        </Popover>
-
         {splitError && listContainerRef?.current && (
           <Popover
             triggerRef={triggerRef}

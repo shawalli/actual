@@ -1,6 +1,6 @@
 {
   "name": "desktop-electron",
-  "version": "26.7.0",
+  "version": "26.8.0",
   "description": "A simple and powerful personal finance system",
   "author": "Actual",
   "main": "build/desktop-electron/index.js",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@actual-app/sync-server": "workspace:*",
-    "better-sqlite3": "^12.10.0"
+    "better-sqlite3": "^12.11.1"
   },
   "devDependencies": {
     "@actual-app/core": "workspace:*",

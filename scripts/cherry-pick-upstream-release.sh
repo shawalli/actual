@@ -5,8 +5,9 @@
 # This helper is intentionally narrower than scripts/sync-upstream.sh:
 # - it does not create a PR
 # - it does not tag a fork release
+# - it preserves the upstream range as one local commit per upstream commit
 # - it does not commit lockfile changes from upstream
-# - it leaves the final commit/review/validation workflow to the operator
+# - it leaves dependency regeneration, review, and validation to the operator
 #
 # Usage:
 #   ./scripts/cherry-pick-upstream-release.sh v26.6.0 v26.7.0
@@ -81,37 +82,44 @@ if [[ -n "$(git status --porcelain)" ]]; then
   die "working tree is not clean; commit, stash, or discard changes before starting"
 fi
 
-echo "Cherry-picking upstream range ${previous_tag}..${new_tag} onto ${current_branch}."
+upstream_commits=("${(@f)$(git rev-list --reverse "${previous_tag}..${new_tag}")}")
+
+echo "Cherry-picking ${#upstream_commits[@]} upstream commits from ${previous_tag}..${new_tag} onto ${current_branch}."
 echo "Lockfiles will be restored from HEAD and must be regenerated with yarn install after conflicts are resolved."
 echo ""
 
-if run git cherry-pick --no-commit "${previous_tag}..${new_tag}"; then
-  restore_lockfiles_from_head
-  cat <<EOF
+for commit in "${upstream_commits[@]}"; do
+  echo "Applying upstream commit ${commit}."
 
-Cherry-pick range applied without conflicts.
+  if ! run git cherry-pick --no-commit "$commit"; then
+    restore_lockfiles_from_head
+    cat <<EOF
+
+Cherry-pick stopped on ${commit} with conflicts.
+
+Conflict protocol:
+  1. Do not resolve ${LOCKFILES[*]} manually; this script restored or removed them from HEAD.
+  2. Resolve and stage all non-lockfile conflicts.
+  3. Run: git cherry-pick --continue
+  4. Re-run this script with the remaining upstream range.
+  5. After the complete range is resolved, run: yarn install
+  6. Run gates in order: yarn build, yarn test, yarn lint:fix, yarn typecheck
+
+EOF
+    exit 1
+  fi
+
+  restore_lockfiles_from_head
+  run git commit -C "$commit"
+done
+
+cat <<EOF
+
+Upstream commits applied individually.
 
 Next steps:
   1. Run: yarn install
   2. Review changes: git status && git diff
-  3. Commit the resolved upstream sync changes.
-  4. Run gates in order: yarn build, yarn test, yarn lint:fix, yarn typecheck
+  3. Run gates in order: yarn build, yarn test, yarn lint:fix, yarn typecheck
 
 EOF
-else
-  restore_lockfiles_from_head
-  cat <<EOF
-
-Cherry-pick stopped on conflicts.
-
-Conflict protocol:
-  1. Do not resolve ${LOCKFILES[*]} manually; this script restored or removed them from HEAD.
-  2. Resolve all non-lockfile conflicts.
-  3. Stage resolved files: git add <files>
-  4. Continue or commit the cherry-pick result according to git status.
-  5. After the cherry-pick is fully resolved, run: yarn install
-  6. Run gates in order: yarn build, yarn test, yarn lint:fix, yarn typecheck
-
-EOF
-  exit 1
-fi

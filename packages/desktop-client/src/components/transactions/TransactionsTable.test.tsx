@@ -1602,6 +1602,38 @@ describe('Transactions', () => {
     );
   });
 
+  test('ctrl/cmd+enter adds and closes while the flag picker is open', async () => {
+    const { container, getTransactions, updateProps } = renderTransactions({
+      onCloseAddTransaction: () => {
+        updateProps({ isAdding: false });
+      },
+    });
+
+    expect(getTransactions().length).toBe(5);
+    updateProps({ isAdding: true });
+
+    let input = await editNewField(container, 'notes');
+    await userEvent.clear(input);
+    await userEvent.type(input, 'flag picker shortcut');
+
+    input = await editNewField(container, 'debit');
+    await userEvent.clear(input);
+    await userEvent.type(input, '12.34');
+
+    // Focus the flag cell, which opens the emoji picker
+    await editNewField(container, 'flag');
+
+    await userEvent.keyboard('{Control>}{Enter}{/Control}');
+
+    // The shortcut should reach the table instead of picking an emoji
+    expect(getTransactions().length).toBe(6);
+    expect(getTransactions()[0].amount).toBe(-1234);
+    expect(getTransactions()[0].flag || null).toBe(null);
+    expect(container.querySelector('[data-testid="new-transaction"]')).toBe(
+      null,
+    );
+  });
+
   test('ctrl/cmd+enter saves credit amount when pressed immediately after typing', async () => {
     // Test the same fix for credit field (issue #6901)
     const { container, getTransactions, updateProps } = renderTransactions({

@@ -837,7 +837,9 @@ export function EmojiSelect({
         return;
       }
 
-      if (open && e.key === 'Enter') {
+      // Ctrl/Cmd+Enter belongs to the table (add & close), so let it through
+      // instead of picking an emoji.
+      if (open && e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
         if (
           focusedIndex !== null &&
           focusedIndex >= 0 &&
